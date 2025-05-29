@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Load Visualization Test</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .test-container {
+            background: #f5f5f5;
+            padding: 40px;
+            border-radius: 8px;
+        }
+        .beam-line {
+            stroke: #666;
+            stroke-width: 2;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            margin: 0 10px;
+            padding: 5px 10px;
+        }
+        .info {
+            margin: 20px 0;
+            padding: 10px;
+            background: #e0e0e0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h2>Load Visualization Test</h2>
+        
+        <div class="info">
+            The loads are scaled relative to each other. The largest load will always be at maximum height (60px),
+            and other loads will scale proportionally.
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button onclick="updateMagnitudes()">Change Magnitudes</button>
+            <button onclick="addLoad()">Add Random Load</button>
+            <button onclick="removeLastLoad()">Remove Last Load</button>
+        </div>
+
+        <!-- SVG Canvas -->
+        <svg id="canvas" width="800" height="300"></svg>
+    </div>
+
+    <script>
+        // Initialize SVG
+        const svg = d3.select('#canvas');
+        
+        // Create a group for the beam and loads, centered vertically
+        const mainGroup = svg.append('g')
+            .attr('transform', 'translate(0, 150)');
+        
+        // Add beam
+        mainGroup.append('line')
+            .attr('class', 'beam-line')
+            .attr('x1', 50)
+            .attr('y1', 0)
+            .attr('x2', 750)
+            .attr('y2', 0);
+
+        // LoadRenderer implementation
+        class LoadRenderer {
+            constructor(svgContainer) {
+                this.svg = svgContainer;
+                this.MAX_HEIGHT = 60;
+                this.TOP_OFFSET = 20;
+                this.loads = new Map();
+            }
+
+            getMaxMagnitude(type) {
+                const loadsOfType = Array.from(this.loads.values())
+                    .filter(load => load.type === type);
+                
+                if (loadsOfType.length === 0) return 1;
+                return Math.max(...loadsOfType.map(load => Math.abs(load.magnitude)));
+            }
+
+            calculateHeight(magnitude, type) {
+                const maxMagnitude = this.getMaxMagnitude(type);
+                return (Math.abs(magnitude) / maxMagnitude) * this.MAX_HEIGHT;
+            }
+
+            updateAllLoads() {
+                this.loads.forEach((loadData, loadGroup) => {
+                    const height = this.calculateHeight(loadData.magnitude, loadData.type);
+                    const d3Group = d3.select(loadGroup);
+                    
+                    if (loadData.type === 'udl') {
+                        d3Group.select('rect')
+                            .transition()
+                            .duration(300)
+                            .attr('y', -height - this.TOP_OFFSET)
+                            .attr('height', height);
+
+                        d3Group.select('text')
+                            .transition()
+                            .duration(300)
+                            .attr('y', -height - this.TOP_OFFSET - 5);
+                    } else { // point load
+                        d3Group.select('line')
+                            .transition()
+                            .duration(300)
+                            .attr('y1', -this.TOP_OFFSET)
+                            .attr('y2', -height - this.TOP_OFFSET);
+
+                        d3Group.select('text')
+                            .transition()
+                            .duration(300)
+                            .attr('y', -height - this.TOP_OFFSET - 5);
+                    }
+                });
+            }
+
+            renderUDL(params) {
+                const {startX, endX, magnitude, color = 'black'} = params;
+                const height = this.calculateHeight(magnitude, 'udl');
+                
+                const loadGroup = this.svg.append('g')
+                    .attr('class', 'udl-load');
+
+                this.loads.set(loadGroup.node(), {
+                    type: 'udl',
+                    magnitude: magnitude
+                });
+
+                loadGroup.append('rect')
+                    .attr('x', startX)
+                    .attr('y', -height - this.TOP_OFFSET)
+                    .attr('width', endX - startX)
+                    .attr('height', height)
+                    .attr('fill', 'none')
+                    .attr('stroke', color)
+                    .attr('stroke-width', 2);
+
+                loadGroup.append('text')
+                    .attr('x', startX + (endX - startX) / 2)
+                    .attr('y', -height - this.TOP_OFFSET - 5)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '12px')
+                    .text(`${magnitude} k/ft`);
+
+                this.updateAllLoads();
+                return loadGroup;
+            }
+
+            renderPointLoad(params) {
+                const {x, magnitude, color = 'black'} = params;
+                const height = this.calculateHeight(magnitude, 'point');
+
+                const loadGroup = this.svg.append('g')
+                    .attr('class', 'point-load');
+
+                this.loads.set(loadGroup.node(), {
+                    type: 'point',
+                    magnitude: magnitude
+                });
+
+                loadGroup.append('line')
+                    .attr('x1', x)
+                    .attr('y1', -this.TOP_OFFSET)
+                    .attr('x2', x)
+                    .attr('y2', -height - this.TOP_OFFSET)
+                    .attr('stroke', color)
+                    .attr('stroke-width', 2);
+
+                loadGroup.append('text')
+                    .attr('x', x)
+                    .attr('y', -height - this.TOP_OFFSET - 5)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '12px')
+                    .text(`${magnitude} k`);
+
+                this.updateAllLoads();
+                return loadGroup;
+            }
+
+            updateMagnitude(loadGroup, newMagnitude) {
+                const loadData = this.loads.get(loadGroup.node());
+                loadData.magnitude = newMagnitude;
+                
+                this.updateAllLoads();
+
+                loadGroup.select('text')
+                    .text(loadData.type === 'udl' 
+                        ? `${newMagnitude} k/ft` 
+                        : `${newMagnitude} k`);
+            }
+
+            removeLoad(loadGroup) {
+                this.loads.delete(loadGroup.node());
+                loadGroup.remove();
+                this.updateAllLoads();
+            }
+        }
+
+        // Create renderer and store loads
+        const renderer = new LoadRenderer(mainGroup);
+        const loadGroups = [];
+        
+        // Add some example loads
+        loadGroups.push(renderer.renderUDL({
+            startX: 100,
+            endX: 300,
+            magnitude: 2,
+            color: '#2563eb'
+        }));
+
+        loadGroups.push(renderer.renderPointLoad({
+            x: 400,
+            magnitude: 5,
+            color: '#dc2626'
+        }));
+
+        loadGroups.push(renderer.renderUDL({
+            startX: 500,
+            endX: 650,
+            magnitude: 1.5,
+            color: '#059669'
+        }));
+
+        // Function to update magnitudes
+        function updateMagnitudes() {
+            loadGroups.forEach(loadGroup => {
+                renderer.updateMagnitude(loadGroup, Math.random() * 6 + 1);
+            });
+        }
+
+        // Function to add a random load
+        function addLoad() {
+            const isUDL = Math.random() > 0.5;
+            const colors = ['#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            if (isUDL) {
+                const startX = Math.random() * 500 + 100;
+                loadGroups.push(renderer.renderUDL({
+                    startX: startX,
+                    endX: startX + Math.random() * 100 + 50,
+                    magnitude: Math.random() * 4 + 1,
+                    color: color
+                }));
+            } else {
+                loadGroups.push(renderer.renderPointLoad({
+                    x: Math.random() * 600 + 100,
+                    magnitude: Math.random() * 6 + 1,
+                    color: color
+                }));
+            }
+        }
+
+        // Function to remove the last added load
+        function removeLastLoad() {
+            if (loadGroups.length > 0) {
+                const loadGroup = loadGroups.pop();
+                renderer.removeLoad(loadGroup);
+            }
+        }
+    </script>
+</body>
+</html> 
