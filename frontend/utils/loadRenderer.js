@@ -4,10 +4,64 @@ class LoadRenderer {
     constructor(svgContainer) {
         this.svg = svgContainer;
         this.MAX_HEIGHT = 60; // Maximum height in pixels
-        this.TOP_OFFSET = 10; // Fixed distance from beam to loads (reduced from 20)
+        this.TOP_OFFSET = 10; // Fixed distance from beam to loads
         this.ARROW_SIZE = 8; // Size of arrowhead
         this.ARROW_OVERLAP = 3; // How far the line extends into the arrow
-        this.loads = new Map(); // Store all loads to track max magnitude
+        this.SCALE_FACTOR = 10; // Pixels per unit of magnitude
+        this.loads = new Map(); // Store all loads
+        this.gradientCounter = 0; // For unique gradient IDs
+
+        // Ensure defs exists or create it
+        let defs = this.svg.select('defs');
+        if (!defs.node()) {
+            defs = this.svg.append('defs');
+        }
+        this.defs = defs;
+
+        // Draw beam line
+        this.svg.append('line')
+            .attr('class', 'beam-line')
+            .attr('x1', 50)
+            .attr('y1', 150)  // Fixed beam position
+            .attr('x2', 750)
+            .attr('y2', 150)  // Fixed beam position
+            .attr('stroke', '#666')
+            .attr('stroke-width', 2);
+    }
+
+    /**
+     * Create a gradient for a specific color
+     * @private
+     */
+    createColorGradient(color) {
+        const gradientId = `load-gradient-${this.gradientCounter++}`;
+        
+        // Remove any existing gradient with this ID
+        this.defs.select(`#${gradientId}`).remove();
+        
+        // Create new gradient with explicit attributes
+        const gradient = this.defs.append('linearGradient')
+            .attr('id', gradientId)
+            .attr('x1', '0%')
+            .attr('y1', '0%')
+            .attr('x2', '0%')
+            .attr('y2', '100%')
+            .attr('gradientUnits', 'userSpaceOnUse');
+            
+        // Parse color and create stops with explicit opacity
+        const rgb = d3.color(color);
+        gradient.append('stop')
+            .attr('offset', '0%')
+            .attr('stop-color', rgb.toString())
+            .attr('stop-opacity', '0.3');
+            
+        gradient.append('stop')
+            .attr('offset', '100%')
+            .attr('stop-color', rgb.toString())
+            .attr('stop-opacity', '0.8');
+
+        // Return the complete URL reference
+        return `url(#${gradientId})`;
     }
 
     /**
@@ -26,9 +80,8 @@ class LoadRenderer {
      * Calculate height based on magnitude and current maximum for the load type
      * @private
      */
-    calculateHeight(magnitude, type) {
-        const maxMagnitude = this.getMaxMagnitude(type);
-        return (Math.abs(magnitude) / maxMagnitude) * this.MAX_HEIGHT;
+    calculateHeight(magnitude) {
+        return Math.min(Math.abs(magnitude) * this.SCALE_FACTOR, this.MAX_HEIGHT);
     }
 
     /**
@@ -56,20 +109,25 @@ class LoadRenderer {
      */
     updateAllLoads() {
         this.loads.forEach((loadData, loadGroup) => {
-            const height = this.calculateHeight(loadData.magnitude, loadData.type);
+            const height = this.calculateHeight(loadData.magnitude);
             const d3Group = d3.select(loadGroup);
             
             if (loadData.type === 'udl') {
-                const y = -height - this.TOP_OFFSET;
+                const y = 150 - height - this.TOP_OFFSET;  // Adjusted for beam position
                 const rect = d3Group.select('rect');
                 const width = parseFloat(rect.attr('width'));
                 const startX = parseFloat(rect.attr('x'));
                 const endX = startX + width;
 
+                // Create new gradient for the update
+                const gradientFill = this.createColorGradient(loadData.color || 'black');
+
+                // Update rectangle with new gradient
                 rect.transition()
                     .duration(300)
                     .attr('y', y)
-                    .attr('height', height);
+                    .attr('height', height)
+                    .attr('fill', gradientFill);
 
                 // Update arrows
                 const arrows = d3Group.selectAll('path');
@@ -78,17 +136,18 @@ class LoadRenderer {
                     d3.select(arrow)
                         .transition()
                         .duration(300)
-                        .attr('d', d => this.createArrowPath(x, -this.TOP_OFFSET, this.ARROW_SIZE));
+                        .attr('d', this.createArrowPath(x, 150 - this.TOP_OFFSET, this.ARROW_SIZE));
                 });
 
+                // Update text
                 d3Group.select('text')
                     .transition()
                     .duration(300)
                     .attr('y', y - 5)
                     .text(`${this.formatMagnitude(loadData.magnitude)} k/ft`);
             } else { // point load
-                const y2 = -height - this.TOP_OFFSET;
-                const y1 = -this.TOP_OFFSET - this.ARROW_OVERLAP;
+                const y2 = 150 - height - this.TOP_OFFSET;  // Adjusted for beam position
+                const y1 = 150 - this.TOP_OFFSET - this.ARROW_OVERLAP;
                 
                 d3Group.select('line')
                     .transition()
@@ -99,8 +158,7 @@ class LoadRenderer {
                 d3Group.select('path')
                     .transition()
                     .duration(300)
-                    .attr('d', d => this.createArrowPath(d.x, -this.TOP_OFFSET, this.ARROW_SIZE))
-                    .attr('fill', d => d.color);
+                    .attr('d', this.createArrowPath(parseFloat(d3Group.select('line').attr('x1')), 150 - this.TOP_OFFSET, this.ARROW_SIZE));
 
                 d3Group.select('text')
                     .transition()
@@ -127,41 +185,40 @@ class LoadRenderer {
             color = 'black'
         } = params;
 
-        // Calculate height relative to current maximum for UDLs
-        const height = this.calculateHeight(magnitude, 'udl');
-        const y = -height - this.TOP_OFFSET;
+        const height = this.calculateHeight(magnitude);
+        const y = 150 - height - this.TOP_OFFSET;  // Adjusted for beam position
         
-        // Create load group
+        const gradientFill = this.createColorGradient(color);
+        
         const loadGroup = this.svg.append('g')
             .attr('class', 'udl-load');
 
-        // Store load data
         this.loads.set(loadGroup.node(), {
             type: 'udl',
-            magnitude: magnitude
+            magnitude: magnitude,
+            color: color
         });
 
-        // Main rectangle for UDL
+        // Main rectangle for UDL with gradient fill
         loadGroup.append('rect')
             .attr('x', startX)
             .attr('y', y)
             .attr('width', endX - startX)
             .attr('height', height)
-            .attr('fill', 'none')
+            .attr('fill', gradientFill)
             .attr('stroke', color)
-            .attr('stroke-width', 2);
+            .attr('stroke-width', 1)
+            .attr('stroke-opacity', 0.7);
 
         // Left arrow
         loadGroup.append('path')
-            .datum({ x: startX, color: color })
-            .attr('d', d => this.createArrowPath(d.x, -this.TOP_OFFSET, this.ARROW_SIZE))
+            .attr('d', this.createArrowPath(startX, 150 - this.TOP_OFFSET, this.ARROW_SIZE))
             .attr('fill', color)
             .attr('stroke', 'none');
 
         // Right arrow
         loadGroup.append('path')
-            .datum({ x: endX, color: color })
-            .attr('d', d => this.createArrowPath(d.x, -this.TOP_OFFSET, this.ARROW_SIZE))
+            .attr('d', this.createArrowPath(endX, 150 - this.TOP_OFFSET, this.ARROW_SIZE))
             .attr('fill', color)
             .attr('stroke', 'none');
 
@@ -171,10 +228,8 @@ class LoadRenderer {
             .attr('y', y - 5)
             .attr('text-anchor', 'middle')
             .attr('font-size', '12px')
+            .attr('fill', color)
             .text(`${this.formatMagnitude(magnitude)} k/ft`);
-
-        // Update all loads to maintain relative scaling
-        this.updateAllLoads();
 
         return loadGroup;
     }
@@ -193,17 +248,17 @@ class LoadRenderer {
             color = 'black'
         } = params;
 
-        const height = this.calculateHeight(magnitude, 'point');
-        const y2 = -height - this.TOP_OFFSET;
-        const y1 = -this.TOP_OFFSET - this.ARROW_OVERLAP; // Extend line into arrow
+        const height = this.calculateHeight(magnitude);
+        const y2 = 150 - height - this.TOP_OFFSET;  // Adjusted for beam position
+        const y1 = 150 - this.TOP_OFFSET - this.ARROW_OVERLAP;
 
         const loadGroup = this.svg.append('g')
             .attr('class', 'point-load');
 
-        // Store load data
         this.loads.set(loadGroup.node(), {
             type: 'point',
-            magnitude: magnitude
+            magnitude: magnitude,
+            color: color
         });
 
         // Vertical line
@@ -215,10 +270,9 @@ class LoadRenderer {
             .attr('stroke', color)
             .attr('stroke-width', 2);
 
-        // Arrowhead at bottom of line (near beam)
+        // Arrowhead at bottom of line
         loadGroup.append('path')
-            .datum({ x: x, color: color })
-            .attr('d', d => this.createArrowPath(d.x, -this.TOP_OFFSET, this.ARROW_SIZE))
+            .attr('d', this.createArrowPath(x, 150 - this.TOP_OFFSET, this.ARROW_SIZE))
             .attr('fill', color)
             .attr('stroke', 'none');
 
@@ -228,10 +282,8 @@ class LoadRenderer {
             .attr('y', y2 - 5)
             .attr('text-anchor', 'middle')
             .attr('font-size', '12px')
+            .attr('fill', color)
             .text(`${this.formatMagnitude(magnitude)} k`);
-
-        // Update all loads to maintain relative scaling
-        this.updateAllLoads();
 
         return loadGroup;
     }
