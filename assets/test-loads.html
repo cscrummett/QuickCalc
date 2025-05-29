@@ -30,6 +30,19 @@
             background: #e0e0e0;
             border-radius: 4px;
         }
+        #debug-info {
+            margin: 20px 0;
+            padding: 10px;
+            background: #e8f4fd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        #canvas {
+            border: 1px solid #ccc;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -37,314 +50,232 @@
         <h2>Load Visualization Test</h2>
         
         <div class="info">
-            The loads are scaled relative to each other. The largest load will always be at maximum height (60px),
-            and other loads will scale proportionally.
+            Testing gradient fills for UDL visualization
         </div>
 
         <!-- Controls -->
         <div class="controls">
-            <button onclick="updateMagnitudes()">Change Magnitudes</button>
-            <button onclick="addLoad()">Add Random Load</button>
-            <button onclick="removeLastLoad()">Remove Last Load</button>
+            <button onclick="addUDL('#2563eb')">Add Blue UDL</button>
+            <button onclick="addUDL('#dc2626')">Add Red UDL</button>
+            <button onclick="addUDL('#059669')">Add Green UDL</button>
+            <button onclick="clearLoads()">Clear All</button>
         </div>
 
-        <!-- SVG Canvas -->
-        <svg id="canvas" width="800" height="300"></svg>
+        <!-- SVG Canvas with explicit defs -->
+        <svg id="canvas" width="800" height="300">
+            <defs id="gradient-defs"></defs>
+        </svg>
+
+        <!-- Debug Info -->
+        <div id="debug-info">Debug info will appear here...</div>
     </div>
 
     <script>
-        // Initialize SVG
+        // Initialize SVG and defs
         const svg = d3.select('#canvas');
-        
-        // Create a group for the beam and loads, centered vertically
-        const mainGroup = svg.append('g')
-            .attr('transform', 'translate(0, 150)');
-        
-        // Add beam
-        mainGroup.append('line')
-            .attr('class', 'beam-line')
-            .attr('x1', 50)
-            .attr('y1', 0)
-            .attr('x2', 750)
-            .attr('y2', 0);
+        const defs = svg.select('defs');
+        console.log('SVG and defs initialized:', {
+            svg: svg.node(),
+            defs: defs.node()
+        });
 
-        // LoadRenderer implementation
+        // Debug function to check SVG structure
+        function debugSVG() {
+            console.log('Running debugSVG...');
+            const debugDiv = document.getElementById('debug-info');
+            const defsNode = document.getElementById('gradient-defs');
+            const defsContent = defsNode ? defsNode.innerHTML : 'No defs content';
+            const gradientCount = defs.selectAll('linearGradient').size();
+            
+            const debugInfo = `
+SVG exists: ${!!document.getElementById('canvas')}
+Defs exists: ${!!defsNode}
+Gradients count: ${gradientCount}
+SVG namespace: ${svg.node().namespaceURI}
+Defs namespace: ${defsNode ? defsNode.namespaceURI : 'N/A'}
+
+Defs content:
+${defsContent}
+            `;
+            
+            console.log('Debug info:', debugInfo);
+            debugDiv.textContent = debugInfo;
+        }
+
+        // Initialize renderer
         class LoadRenderer {
             constructor(svgContainer) {
                 this.svg = svgContainer;
-                this.MAX_HEIGHT = 60; // Maximum height in pixels
-                this.TOP_OFFSET = 10; // Fixed distance from beam to loads
-                this.ARROW_SIZE = 8; // Size of arrowhead
-                this.ARROW_OVERLAP = 3; // How far the line extends into the arrow
-                this.SCALE_FACTOR = 10; // Pixels per unit of magnitude
-                this.loads = new Map(); // Store all loads
+                this.defs = svgContainer.select('defs');
+                console.log('LoadRenderer initialized with defs:', this.defs.node());
+                
+                this.MAX_HEIGHT = 60;
+                this.TOP_OFFSET = 10;
+                this.ARROW_SIZE = 8;
+                this.ARROW_OVERLAP = 3;
+                this.SCALE_FACTOR = 10;
+                this.loads = new Map();
+                this.gradientCounter = 0;
+                
+                // Draw beam
+                this.svg.append('rect')
+                    .attr('x', 50)
+                    .attr('y', 150)
+                    .attr('width', 700)
+                    .attr('height', 4)
+                    .attr('fill', '#666')
+                    .attr('rx', 2);
+            }
 
-                // Define load types
-                this.LOAD_TYPES = {
-                    POINT: 'point',
-                    UDL: 'udl',
-                    NUDL: 'non-uniform-dl',  // For future implementation
-                    MOMENT: 'moment'         // For future implementation
-                };
+            createColorGradient(color) {
+                const gradientId = `load-gradient-${this.gradientCounter++}`;
+                console.log(`Creating gradient: ${gradientId} for color: ${color}`);
+                
+                // Remove any existing gradient with this ID
+                this.defs.select(`#${gradientId}`).remove();
+                
+                // Create new gradient
+                const gradient = this.defs.append('linearGradient')
+                    .attr('id', gradientId)
+                    .attr('x1', '0%')
+                    .attr('y1', '0%')
+                    .attr('x2', '0%')
+                    .attr('y2', '100%')
+                    .attr('gradientUnits', 'userSpaceOnUse');
+                
+                // Parse color and create stops
+                const rgb = d3.color(color);
+                gradient.append('stop')
+                    .attr('offset', '0%')
+                    .attr('stop-color', rgb.toString())
+                    .attr('stop-opacity', '0.3');
+                
+                gradient.append('stop')
+                    .attr('offset', '100%')
+                    .attr('stop-color', rgb.toString())
+                    .attr('stop-opacity', '0.8');
+
+                console.log('Created gradient:', {
+                    id: gradientId,
+                    element: gradient.node(),
+                    url: `url(#${gradientId})`
+                });
+
+                debugSVG();
+                return `url(#${gradientId})`;
             }
 
             calculateHeight(magnitude) {
-                // Direct scaling with a cap
                 return Math.min(Math.abs(magnitude) * this.SCALE_FACTOR, this.MAX_HEIGHT);
             }
 
             createArrowPath(x, y, size) {
-                // Arrow points downward at the bottom of the line
-                // Width reduced to ~2/3, centered (±0.67 instead of ±1)
                 const halfWidth = size * 0.67;
                 return `M ${x} ${y} l ${-halfWidth} ${-size} l ${halfWidth * 2} 0 Z`;
             }
 
-            addArrow(group, x, color) {
-                return group.append('path')
-                    .attr('d', this.createArrowPath(x, -this.TOP_OFFSET, this.ARROW_SIZE))
-                    .attr('fill', color)
-                    .attr('stroke', 'none');
-            }
-
-            createLoadGroup(type, magnitude) {
-                if (!Object.values(this.LOAD_TYPES).includes(type)) {
-                    throw new Error(`Invalid load type: ${type}`);
-                }
-
-                const loadGroup = this.svg.append('g')
-                    .attr('class', `${type}-load`);
-
-                this.loads.set(loadGroup.node(), { 
-                    type,
-                    magnitude,
-                });
-                return loadGroup;
-            }
-
-            createTransition(selection) {
-                return selection.transition().duration(300);
-            }
-
-            formatMagnitude(value, type) {
-                const baseText = value.toFixed(1);
-                switch (type) {
-                    case this.LOAD_TYPES.UDL:
-                        return `${baseText} k/ft`;
-                    case this.LOAD_TYPES.POINT:
-                        return `${baseText} k`;
-                    case this.LOAD_TYPES.MOMENT:
-                        return `${baseText} k-ft`;
-                    case this.LOAD_TYPES.NUDL:
-                        return `${baseText} k/ft`;
-                    default:
-                        return `${baseText}`;
-                }
-            }
-
-            updateAllLoads() {
-                this.loads.forEach((loadData, loadGroup) => {
-                    const height = this.calculateHeight(loadData.magnitude);
-                    const d3Group = d3.select(loadGroup);
-                    const y = -height - this.TOP_OFFSET;
-                    
-                    switch (loadData.type) {
-                        case this.LOAD_TYPES.UDL:
-                            const rect = d3Group.select('rect');
-                            const width = parseFloat(rect.attr('width'));
-                            const startX = parseFloat(rect.attr('x'));
-                            const endX = startX + width;
-
-                            // Update rectangle
-                            this.createTransition(rect)
-                                .attr('y', y)
-                                .attr('height', height);
-
-                            // Update arrows
-                            const arrows = d3Group.selectAll('path');
-                            arrows.nodes().forEach((arrow, i) => {
-                                const x = i === 0 ? startX : endX;
-                                this.createTransition(d3.select(arrow))
-                                    .attr('d', this.createArrowPath(x, -this.TOP_OFFSET, this.ARROW_SIZE));
-                            });
-
-                            // Update text
-                            this.createTransition(d3Group.select('text'))
-                                .attr('y', y - 5)
-                                .text(this.formatMagnitude(loadData.magnitude, loadData.type));
-                            break;
-
-                        case this.LOAD_TYPES.POINT:
-                            const y1 = -this.TOP_OFFSET - this.ARROW_OVERLAP;
-                            
-                            // Update line
-                            this.createTransition(d3Group.select('line'))
-                                .attr('y1', y1)
-                                .attr('y2', y);
-
-                            // Update arrow
-                            const arrowX = parseFloat(d3Group.select('line').attr('x1'));
-                            this.createTransition(d3Group.select('path'))
-                                .attr('d', this.createArrowPath(arrowX, -this.TOP_OFFSET, this.ARROW_SIZE));
-
-                            // Update text
-                            this.createTransition(d3Group.select('text'))
-                                .attr('y', y - 5)
-                                .text(this.formatMagnitude(loadData.magnitude, loadData.type));
-                            break;
-
-                            // Future load types can be added here
-                        case this.LOAD_TYPES.MOMENT:
-                            // TODO: Implement moment visualization
-                            break;
-
-                        case this.LOAD_TYPES.NUDL:
-                            // TODO: Implement non-uniform distributed load visualization
-                            break;
-                    }
-                });
+            formatMagnitude(value) {
+                return value.toFixed(1);
             }
 
             renderUDL(params) {
-                const {startX, endX, magnitude, color = 'black'} = params;
-                const height = this.calculateHeight(magnitude);
-                const y = -height - this.TOP_OFFSET;
-                
-                const loadGroup = this.createLoadGroup(this.LOAD_TYPES.UDL, magnitude);
+                const {
+                    startX,
+                    endX,
+                    magnitude,
+                    color = 'black'
+                } = params;
 
-                loadGroup.append('rect')
+                const height = this.calculateHeight(magnitude);
+                const y = 150 - height - this.TOP_OFFSET;
+                
+                const gradientFill = this.createColorGradient(color);
+                console.log(`Using gradient fill: ${gradientFill}`);
+                
+                const loadGroup = this.svg.append('g')
+                    .attr('class', 'udl-load');
+
+                this.loads.set(loadGroup.node(), {
+                    type: 'udl',
+                    magnitude: magnitude,
+                    color: color
+                });
+
+                // Main rectangle with gradient
+                const rect = loadGroup.append('rect')
                     .attr('x', startX)
                     .attr('y', y)
                     .attr('width', endX - startX)
                     .attr('height', height)
-                    .attr('fill', 'none')
+                    .attr('fill', gradientFill)
                     .attr('stroke', color)
-                    .attr('stroke-width', 2);
+                    .attr('stroke-width', 1)
+                    .attr('stroke-opacity', 0.7);
+
+                console.log('Created rectangle:', {
+                    fill: rect.attr('fill'),
+                    element: rect.node()
+                });
 
                 // Left arrow
-                this.addArrow(loadGroup, startX, color);
+                loadGroup.append('path')
+                    .attr('d', this.createArrowPath(startX, 150 - this.TOP_OFFSET, this.ARROW_SIZE))
+                    .attr('fill', color)
+                    .attr('stroke', 'none');
 
                 // Right arrow
-                this.addArrow(loadGroup, endX, color);
+                loadGroup.append('path')
+                    .attr('d', this.createArrowPath(endX, 150 - this.TOP_OFFSET, this.ARROW_SIZE))
+                    .attr('fill', color)
+                    .attr('stroke', 'none');
 
+                // Magnitude label
                 loadGroup.append('text')
                     .attr('x', startX + (endX - startX) / 2)
                     .attr('y', y - 5)
                     .attr('text-anchor', 'middle')
                     .attr('font-size', '12px')
-                    .text(this.formatMagnitude(magnitude, this.LOAD_TYPES.UDL));
+                    .attr('fill', color)
+                    .text(`${this.formatMagnitude(magnitude)} k/ft`);
 
+                debugSVG();
                 return loadGroup;
-            }
-
-            renderPointLoad(params) {
-                const {x, magnitude, color = 'black'} = params;
-                const height = this.calculateHeight(magnitude);
-                const y = -height - this.TOP_OFFSET;
-                const y1 = -this.TOP_OFFSET - this.ARROW_OVERLAP;
-
-                const loadGroup = this.createLoadGroup(this.LOAD_TYPES.POINT, magnitude);
-
-                loadGroup.append('line')
-                    .attr('x1', x)
-                    .attr('y1', y1)
-                    .attr('x2', x)
-                    .attr('y2', y)
-                    .attr('stroke', color)
-                    .attr('stroke-width', 2);
-
-                // Add arrow at bottom of line
-                this.addArrow(loadGroup, x, color);
-
-                loadGroup.append('text')
-                    .attr('x', x)
-                    .attr('y', y - 5)
-                    .attr('text-anchor', 'middle')
-                    .attr('font-size', '12px')
-                    .text(this.formatMagnitude(magnitude, this.LOAD_TYPES.POINT));
-
-                return loadGroup;
-            }
-
-            updateMagnitude(loadGroup, newMagnitude) {
-                const loadData = this.loads.get(loadGroup.node());
-                loadData.magnitude = newMagnitude;
-                
-                this.updateAllLoads();
-
-                loadGroup.select('text')
-                    .text(this.formatMagnitude(newMagnitude, loadData.type));
-            }
-
-            removeLoad(loadGroup) {
-                this.loads.delete(loadGroup.node());
-                loadGroup.remove();
-                this.updateAllLoads();
             }
         }
 
-        // Create renderer and store loads
-        const renderer = new LoadRenderer(mainGroup);
-        const loadGroups = [];
-        
-        // Add some example loads
-        loadGroups.push(renderer.renderUDL({
-            startX: 100,
-            endX: 300,
-            magnitude: 2,
-            color: '#2563eb'
-        }));
+        let udlCounter = 0;
+        const renderer = new LoadRenderer(svg);
 
-        loadGroups.push(renderer.renderPointLoad({
-            x: 400,
-            magnitude: 5,
-            color: '#dc2626'
-        }));
-
-        loadGroups.push(renderer.renderUDL({
-            startX: 500,
-            endX: 650,
-            magnitude: 1.5,
-            color: '#059669'
-        }));
-
-        // Function to update magnitudes
-        function updateMagnitudes() {
-            loadGroups.forEach(loadGroup => {
-                renderer.updateMagnitude(loadGroup, Math.random() * 6 + 1);
-            });
-        }
-
-        // Function to add a random load
-        function addLoad() {
-            const isUDL = Math.random() > 0.5;
-            const colors = ['#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c'];
-            const color = colors[Math.floor(Math.random() * colors.length)];
+        function addUDL(color) {
+            console.log(`Adding UDL with color: ${color}`);
+            const startX = 100 + (udlCounter * 80);
+            const endX = startX + 60;
+            const magnitude = 2 + Math.random() * 3;
             
-            if (isUDL) {
-                const startX = Math.random() * 500 + 100;
-                loadGroups.push(renderer.renderUDL({
-                    startX: startX,
-                    endX: startX + Math.random() * 100 + 50,
-                    magnitude: Math.random() * 4 + 1,
-                    color: color
-                }));
-            } else {
-                loadGroups.push(renderer.renderPointLoad({
-                    x: Math.random() * 600 + 100,
-                    magnitude: Math.random() * 6 + 1,
-                    color: color
-                }));
-            }
+            renderer.renderUDL({
+                startX: startX,
+                endX: endX,
+                magnitude: magnitude,
+                color: color
+            });
+            
+            udlCounter++;
         }
 
-        // Function to remove the last added load
-        function removeLastLoad() {
-            if (loadGroups.length > 0) {
-                const loadGroup = loadGroups.pop();
-                renderer.removeLoad(loadGroup);
-            }
+        function clearLoads() {
+            console.log('Clearing all loads');
+            svg.selectAll('.udl-load').remove();
+            defs.selectAll('linearGradient').remove();
+            renderer.loads.clear();
+            renderer.gradientCounter = 0;
+            udlCounter = 0;
+            debugSVG();
         }
+
+        // Initial setup
+        console.log('Running initial setup');
+        debugSVG();
+        addUDL('#2563eb');
     </script>
 </body>
 </html> 
