@@ -72,24 +72,25 @@
         class LoadRenderer {
             constructor(svgContainer) {
                 this.svg = svgContainer;
-                this.MAX_HEIGHT = 60;
-                this.TOP_OFFSET = 10;
-                this.ARROW_SIZE = 8;
-                this.ARROW_OVERLAP = 3;
-                this.loads = new Map();
+                this.MAX_HEIGHT = 60; // Maximum height in pixels
+                this.TOP_OFFSET = 10; // Fixed distance from beam to loads
+                this.ARROW_SIZE = 8; // Size of arrowhead
+                this.ARROW_OVERLAP = 3; // How far the line extends into the arrow
+                this.SCALE_FACTOR = 10; // Pixels per unit of magnitude
+                this.loads = new Map(); // Store all loads
+
+                // Define load types
+                this.LOAD_TYPES = {
+                    POINT: 'point',
+                    UDL: 'udl',
+                    NUDL: 'non-uniform-dl',  // For future implementation
+                    MOMENT: 'moment'         // For future implementation
+                };
             }
 
-            getMaxMagnitude(type) {
-                const loadsOfType = Array.from(this.loads.values())
-                    .filter(load => load.type === type);
-                
-                if (loadsOfType.length === 0) return 1;
-                return Math.max(...loadsOfType.map(load => Math.abs(load.magnitude)));
-            }
-
-            calculateHeight(magnitude, type) {
-                const maxMagnitude = this.getMaxMagnitude(type);
-                return (Math.abs(magnitude) / maxMagnitude) * this.MAX_HEIGHT;
+            calculateHeight(magnitude) {
+                // Direct scaling with a cap
+                return Math.min(Math.abs(magnitude) * this.SCALE_FACTOR, this.MAX_HEIGHT);
             }
 
             createArrowPath(x, y, size) {
@@ -99,79 +100,117 @@
                 return `M ${x} ${y} l ${-halfWidth} ${-size} l ${halfWidth * 2} 0 Z`;
             }
 
-            formatMagnitude(value) {
-                return value.toFixed(1);
+            addArrow(group, x, color) {
+                return group.append('path')
+                    .attr('d', this.createArrowPath(x, -this.TOP_OFFSET, this.ARROW_SIZE))
+                    .attr('fill', color)
+                    .attr('stroke', 'none');
+            }
+
+            createLoadGroup(type, magnitude) {
+                if (!Object.values(this.LOAD_TYPES).includes(type)) {
+                    throw new Error(`Invalid load type: ${type}`);
+                }
+
+                const loadGroup = this.svg.append('g')
+                    .attr('class', `${type}-load`);
+
+                this.loads.set(loadGroup.node(), { 
+                    type,
+                    magnitude,
+                });
+                return loadGroup;
+            }
+
+            createTransition(selection) {
+                return selection.transition().duration(300);
+            }
+
+            formatMagnitude(value, type) {
+                const baseText = value.toFixed(1);
+                switch (type) {
+                    case this.LOAD_TYPES.UDL:
+                        return `${baseText} k/ft`;
+                    case this.LOAD_TYPES.POINT:
+                        return `${baseText} k`;
+                    case this.LOAD_TYPES.MOMENT:
+                        return `${baseText} k-ft`;
+                    case this.LOAD_TYPES.NUDL:
+                        return `${baseText} k/ft`;
+                    default:
+                        return `${baseText}`;
+                }
             }
 
             updateAllLoads() {
                 this.loads.forEach((loadData, loadGroup) => {
-                    const height = this.calculateHeight(loadData.magnitude, loadData.type);
+                    const height = this.calculateHeight(loadData.magnitude);
                     const d3Group = d3.select(loadGroup);
+                    const y = -height - this.TOP_OFFSET;
                     
-                    if (loadData.type === 'udl') {
-                        const y = -height - this.TOP_OFFSET;
-                        const rect = d3Group.select('rect');
-                        const width = parseFloat(rect.attr('width'));
-                        const startX = parseFloat(rect.attr('x'));
-                        const endX = startX + width;
+                    switch (loadData.type) {
+                        case this.LOAD_TYPES.UDL:
+                            const rect = d3Group.select('rect');
+                            const width = parseFloat(rect.attr('width'));
+                            const startX = parseFloat(rect.attr('x'));
+                            const endX = startX + width;
 
-                        rect.transition()
-                            .duration(300)
-                            .attr('y', y)
-                            .attr('height', height);
+                            // Update rectangle
+                            this.createTransition(rect)
+                                .attr('y', y)
+                                .attr('height', height);
 
-                        // Update arrows
-                        const arrows = d3Group.selectAll('path');
-                        arrows.nodes().forEach((arrow, i) => {
-                            const x = i === 0 ? startX : endX;
-                            d3.select(arrow)
-                                .transition()
-                                .duration(300)
-                                .attr('d', d => this.createArrowPath(x, -this.TOP_OFFSET, this.ARROW_SIZE));
-                        });
+                            // Update arrows
+                            const arrows = d3Group.selectAll('path');
+                            arrows.nodes().forEach((arrow, i) => {
+                                const x = i === 0 ? startX : endX;
+                                this.createTransition(d3.select(arrow))
+                                    .attr('d', this.createArrowPath(x, -this.TOP_OFFSET, this.ARROW_SIZE));
+                            });
 
-                        d3Group.select('text')
-                            .transition()
-                            .duration(300)
-                            .attr('y', y - 5)
-                            .text(`${this.formatMagnitude(loadData.magnitude)} k/ft`);
-                    } else { // point load
-                        const y2 = -height - this.TOP_OFFSET;
-                        const y1 = -this.TOP_OFFSET - this.ARROW_OVERLAP;
-                        
-                        d3Group.select('line')
-                            .transition()
-                            .duration(300)
-                            .attr('y1', y1)
-                            .attr('y2', y2);
+                            // Update text
+                            this.createTransition(d3Group.select('text'))
+                                .attr('y', y - 5)
+                                .text(this.formatMagnitude(loadData.magnitude, loadData.type));
+                            break;
 
-                        d3Group.select('path')
-                            .transition()
-                            .duration(300)
-                            .attr('d', d => this.createArrowPath(d.x, -this.TOP_OFFSET, this.ARROW_SIZE))
-                            .attr('fill', d => d.color);
+                        case this.LOAD_TYPES.POINT:
+                            const y1 = -this.TOP_OFFSET - this.ARROW_OVERLAP;
+                            
+                            // Update line
+                            this.createTransition(d3Group.select('line'))
+                                .attr('y1', y1)
+                                .attr('y2', y);
 
-                        d3Group.select('text')
-                            .transition()
-                            .duration(300)
-                            .attr('y', y2 - 5)
-                            .text(`${this.formatMagnitude(loadData.magnitude)} k`);
+                            // Update arrow
+                            const arrowX = parseFloat(d3Group.select('line').attr('x1'));
+                            this.createTransition(d3Group.select('path'))
+                                .attr('d', this.createArrowPath(arrowX, -this.TOP_OFFSET, this.ARROW_SIZE));
+
+                            // Update text
+                            this.createTransition(d3Group.select('text'))
+                                .attr('y', y - 5)
+                                .text(this.formatMagnitude(loadData.magnitude, loadData.type));
+                            break;
+
+                            // Future load types can be added here
+                        case this.LOAD_TYPES.MOMENT:
+                            // TODO: Implement moment visualization
+                            break;
+
+                        case this.LOAD_TYPES.NUDL:
+                            // TODO: Implement non-uniform distributed load visualization
+                            break;
                     }
                 });
             }
 
             renderUDL(params) {
                 const {startX, endX, magnitude, color = 'black'} = params;
-                const height = this.calculateHeight(magnitude, 'udl');
+                const height = this.calculateHeight(magnitude);
                 const y = -height - this.TOP_OFFSET;
                 
-                const loadGroup = this.svg.append('g')
-                    .attr('class', 'udl-load');
-
-                this.loads.set(loadGroup.node(), {
-                    type: 'udl',
-                    magnitude: magnitude
-                });
+                const loadGroup = this.createLoadGroup(this.LOAD_TYPES.UDL, magnitude);
 
                 loadGroup.append('rect')
                     .attr('x', startX)
@@ -183,66 +222,47 @@
                     .attr('stroke-width', 2);
 
                 // Left arrow
-                loadGroup.append('path')
-                    .datum({ x: startX, color: color })
-                    .attr('d', d => this.createArrowPath(d.x, -this.TOP_OFFSET, this.ARROW_SIZE))
-                    .attr('fill', color)
-                    .attr('stroke', 'none');
+                this.addArrow(loadGroup, startX, color);
 
                 // Right arrow
-                loadGroup.append('path')
-                    .datum({ x: endX, color: color })
-                    .attr('d', d => this.createArrowPath(d.x, -this.TOP_OFFSET, this.ARROW_SIZE))
-                    .attr('fill', color)
-                    .attr('stroke', 'none');
+                this.addArrow(loadGroup, endX, color);
 
                 loadGroup.append('text')
                     .attr('x', startX + (endX - startX) / 2)
                     .attr('y', y - 5)
                     .attr('text-anchor', 'middle')
                     .attr('font-size', '12px')
-                    .text(`${this.formatMagnitude(magnitude)} k/ft`);
+                    .text(this.formatMagnitude(magnitude, this.LOAD_TYPES.UDL));
 
-                this.updateAllLoads();
                 return loadGroup;
             }
 
             renderPointLoad(params) {
                 const {x, magnitude, color = 'black'} = params;
-                const height = this.calculateHeight(magnitude, 'point');
-                const y2 = -height - this.TOP_OFFSET;
+                const height = this.calculateHeight(magnitude);
+                const y = -height - this.TOP_OFFSET;
                 const y1 = -this.TOP_OFFSET - this.ARROW_OVERLAP;
 
-                const loadGroup = this.svg.append('g')
-                    .attr('class', 'point-load');
-
-                this.loads.set(loadGroup.node(), {
-                    type: 'point',
-                    magnitude: magnitude
-                });
+                const loadGroup = this.createLoadGroup(this.LOAD_TYPES.POINT, magnitude);
 
                 loadGroup.append('line')
                     .attr('x1', x)
                     .attr('y1', y1)
                     .attr('x2', x)
-                    .attr('y2', y2)
+                    .attr('y2', y)
                     .attr('stroke', color)
                     .attr('stroke-width', 2);
 
-                loadGroup.append('path')
-                    .datum({ x: x, color: color })
-                    .attr('d', d => this.createArrowPath(d.x, -this.TOP_OFFSET, this.ARROW_SIZE))
-                    .attr('fill', color)
-                    .attr('stroke', 'none');
+                // Add arrow at bottom of line
+                this.addArrow(loadGroup, x, color);
 
                 loadGroup.append('text')
                     .attr('x', x)
-                    .attr('y', y2 - 5)
+                    .attr('y', y - 5)
                     .attr('text-anchor', 'middle')
                     .attr('font-size', '12px')
-                    .text(`${this.formatMagnitude(magnitude)} k`);
+                    .text(this.formatMagnitude(magnitude, this.LOAD_TYPES.POINT));
 
-                this.updateAllLoads();
                 return loadGroup;
             }
 
@@ -253,9 +273,7 @@
                 this.updateAllLoads();
 
                 loadGroup.select('text')
-                    .text(loadData.type === 'udl' 
-                        ? `${this.formatMagnitude(newMagnitude)} k/ft` 
-                        : `${this.formatMagnitude(newMagnitude)} k`);
+                    .text(this.formatMagnitude(newMagnitude, loadData.type));
             }
 
             removeLoad(loadGroup) {
