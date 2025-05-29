@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Support SVG Test</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .test-container {
+            background: #f5f5f5;
+            padding: 40px;
+            border-radius: 8px;
+        }
+        .beam-line {
+            stroke: #666;
+            stroke-width: 2;
+            stroke-dasharray: 4;
+        }
+        .support-container {
+            margin: 20px 0;
+        }
+        .support {
+            margin: 0 40px;
+            display: inline-block;
+        }
+        .label {
+            text-align: center;
+            margin-top: 10px;
+            color: #444;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h2>Support SVG Alignment Test</h2>
+        
+        <!-- SVG Canvas -->
+        <svg width="800" height="200">
+            <!-- Horizontal beam line -->
+            <line x1="50" y1="50" x2="750" y2="50" class="beam-line"/>
+            
+            <!-- Pinned Support -->
+            <svg x="150" y="50" width="24" height="24">
+                <use href="#pinned-support"/>
+            </svg>
+            
+            <!-- Roller Support -->
+            <svg x="350" y="50" width="24" height="24">
+                <use href="#roller-support"/>
+            </svg>
+            
+            <!-- Fixed Support -->
+            <svg x="550" y="50" width="24" height="24">
+                <use href="#fixed-support"/>
+            </svg>
+        </svg>
+
+        <!-- Support Labels -->
+        <div class="support-container">
+            <div class="support">
+                <div class="label">Pinned Support</div>
+            </div>
+            <div class="support">
+                <div class="label">Roller Support</div>
+            </div>
+            <div class="support">
+                <div class="label">Fixed Support</div>
+            </div>
+        </div>
+
+        <!-- SVG Definitions -->
+        <svg style="display: none;">
+            <defs>
+                <!-- Pinned Support -->
+                <symbol id="pinned-support" viewBox="0 0 24 24">
+                    <path
+                        d="M12 1L20 15H4L12 1Z"
+                        stroke="black"
+                        stroke-width="2"
+                        stroke-linejoin="round"
+                        fill="none"
+                    />
+                </symbol>
+
+                <!-- Roller Support -->
+                <symbol id="roller-support" viewBox="0 0 24 24">
+                    <circle
+                        cx="12"
+                        cy="8"
+                        r="7"
+                        stroke="black"
+                        stroke-width="2"
+                        fill="none"
+                    />
+                </symbol>
+
+                <!-- Fixed Support -->
+                <symbol id="fixed-support" viewBox="0 0 24 24">
+                    <rect
+                        x="4"
+                        y="1"
+                        width="16"
+                        height="14"
+                        stroke="black"
+                        stroke-width="2"
+                        fill="none"
+                    />
+                </symbol>
+            </defs>
+        </svg>
+    </div>
+</body>
+</html> 
