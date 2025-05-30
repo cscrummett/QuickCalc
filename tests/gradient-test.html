@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UDL Gradient Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .debug-info {
+            margin: 20px 0;
+            padding: 10px;
+            background: #e8f4fd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        svg {
+            border: 1px solid #ddd;
+            background: white;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>UDL Gradient Test</h2>
+        <p>Testing gradient visibility in UDL rectangles</p>
+        
+        <div>
+            <button onclick="addUDL('#2563eb')">Add Blue UDL</button>
+            <button onclick="addUDL('#dc2626')">Add Red UDL</button>
+            <button onclick="addUDL('#059669')">Add Green UDL</button>
+            <button onclick="clearLoads()">Clear All</button>
+        </div>
+        
+        <svg id="beam-svg" width="800" height="200"></svg>
+        
+        <div class="debug-info" id="debug-info">
+            Debug info will appear here...
+        </div>
+    </div>
+
+    <script>
+        class LoadRenderer {
+            constructor(svgContainer) {
+                this.svg = svgContainer;
+                this.MAX_HEIGHT = 60;
+                this.TOP_OFFSET = 10;
+                this.ARROW_SIZE = 8;
+                this.ARROW_OVERLAP = 3;
+                this.SCALE_FACTOR = 10;
+                this.loads = new Map();
+                this.gradientCounter = 0;
+
+                // Create defs container for gradients
+                this.defs = this.svg.append('defs');
+                
+                // Draw a simple beam for reference
+                this.svg.append('rect')
+                    .attr('x', 50)
+                    .attr('y', 100)
+                    .attr('width', 700)
+                    .attr('height', 4)
+                    .attr('fill', '#666')
+                    .attr('rx', 2);
+            }
+
+            createColorGradient(color) {
+                const gradientId = `load-gradient-${this.gradientCounter++}`;
+                
+                console.log(`Creating gradient with ID: ${gradientId} for color: ${color}`);
+                
+                const gradient = this.defs.append('linearGradient')
+                    .attr('id', gradientId)
+                    .attr('x1', '0%')
+                    .attr('y1', '0%')
+                    .attr('x2', '0%')
+                    .attr('y2', '100%');
+                    
+                gradient.append('stop')
+                    .attr('offset', '0%')
+                    .attr('stop-color', color)
+                    .attr('stop-opacity', '0.3');
+                    
+                gradient.append('stop')
+                    .attr('offset', '100%')
+                    .attr('stop-color', color)
+                    .attr('stop-opacity', '0.8');
+
+                const gradientUrl = `url(#${gradientId})`;
+                console.log(`Gradient URL: ${gradientUrl}`);
+                return gradientUrl;
+            }
+
+            calculateHeight(magnitude) {
+                return Math.min(Math.abs(magnitude) * this.SCALE_FACTOR, this.MAX_HEIGHT);
+            }
+
+            createArrowPath(x, y, size) {
+                const halfWidth = size * 0.67;
+                return `M ${x} ${y} l ${-halfWidth} ${-size} l ${halfWidth * 2} 0 Z`;
+            }
+
+            formatMagnitude(value) {
+                return value.toFixed(1);
+            }
+
+            renderUDL(params) {
+                const {
+                    startX,
+                    endX,
+                    magnitude,
+                    color = 'black'
+                } = params;
+
+                console.log(`Rendering UDL: startX=${startX}, endX=${endX}, magnitude=${magnitude}, color=${color}`);
+
+                const height = this.calculateHeight(magnitude);
+                const y = 100 - height - this.TOP_OFFSET; // Adjusted for beam position
+                
+                const gradientFill = this.createColorGradient(color);
+                
+                const loadGroup = this.svg.append('g')
+                    .attr('class', 'udl-load');
+
+                this.loads.set(loadGroup.node(), {
+                    type: 'udl',
+                    magnitude: magnitude,
+                    color: color
+                });
+
+                console.log(`Rectangle: x=${startX}, y=${y}, width=${endX - startX}, height=${height}`);
+                console.log(`Fill: ${gradientFill}`);
+
+                // Main rectangle for UDL with gradient fill
+                const rect = loadGroup.append('rect')
+                    .attr('x', startX)
+                    .attr('y', y)
+                    .attr('width', endX - startX)
+                    .attr('height', height)
+                    .attr('fill', gradientFill)
+                    .attr('stroke', color)
+                    .attr('stroke-width', 1)
+                    .attr('stroke-opacity', 0.7);
+
+                // Debug: log the actual fill attribute that was set
+                console.log(`Actual fill attribute: ${rect.attr('fill')}`);
+
+                // Left arrow
+                loadGroup.append('path')
+                    .attr('d', this.createArrowPath(startX, 100 - this.TOP_OFFSET, this.ARROW_SIZE))
+                    .attr('fill', color)
+                    .attr('stroke', 'none');
+
+                // Right arrow
+                loadGroup.append('path')
+                    .attr('d', this.createArrowPath(endX, 100 - this.TOP_OFFSET, this.ARROW_SIZE))
+                    .attr('fill', color)
+                    .attr('stroke', 'none');
+
+                // Add magnitude label
+                loadGroup.append('text')
+                    .attr('x', startX + (endX - startX) / 2)
+                    .attr('y', y - 5)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '12px')
+                    .attr('fill', color)
+                    .text(`${this.formatMagnitude(magnitude)} k/ft`);
+
+                this.updateDebugInfo();
+                return loadGroup;
+            }
+
+            updateDebugInfo() {
+                const debugDiv = document.getElementById('debug-info');
+                const defsContent = this.defs.node().innerHTML;
+                const gradientCount = this.defs.selectAll('linearGradient').size();
+                
+                debugDiv.innerHTML = `
+                    Gradients created: ${gradientCount}<br>
+                    Loads count: ${this.loads.size}<br>
+                    Defs content preview: ${defsContent.substring(0, 200)}${defsContent.length > 200 ? '...' : ''}
+                `;
+            }
+        }
+
+        // Initialize
+        const svg = d3.select('#beam-svg');
+        const renderer = new LoadRenderer(svg);
+
+        let udlCounter = 0;
+
+        function addUDL(color) {
+            const startX = 100 + (udlCounter * 80);
+            const endX = startX + 60;
+            const magnitude = 2 + Math.random() * 3; // Random magnitude between 2-5
+            
+            renderer.renderUDL({
+                startX: startX,
+                endX: endX,
+                magnitude: magnitude,
+                color: color
+            });
+            
+            udlCounter++;
+        }
+
+        function clearLoads() {
+            svg.selectAll('.udl-load').remove();
+            renderer.loads.clear();
+            renderer.gradientCounter = 0;
+            renderer.defs.selectAll('*').remove();
+            udlCounter = 0;
+            renderer.updateDebugInfo();
+        }
+
+        // Add initial UDL for testing
+        addUDL('#2563eb');
+    </script>
+</body>
+</html> 

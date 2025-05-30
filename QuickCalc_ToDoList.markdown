@@ -6,31 +6,31 @@ This to-do list provides a step-by-step guide for building **QuickCalc**, a cros
 
 1. **Set Up Development Environment**
 
-   - Install Python 3.10+ and required libraries: NumPy, SciPy, Pandas, ReportLab.
-   - Install Node.js and Electron for frontend development.
-   - Set up Cursor AI as the IDE with Python and JavaScript support.
-   - Create a Git repository on GitHub with an MIT license.
+   - DONE Install Python 3.10+ and required libraries: NumPy, SciPy, Pandas, ReportLab.
+   - DONE Install Node.js and Electron for frontend development.
+   - DONE Set up Cursor AI as the IDE with Python and JavaScript support.
+   - DONE Create a Git repository on GitHub with an MIT license.
 
 2. **Scaffold Project Structure**
 
-   - Create directories: `backend` (Python), `frontend` (Electron/JS), `assets` (SVGs).
-   - Initialize Python project with `pyproject.toml` or `requirements.txt`.
-   - Initialize Electron project with `package.json` (include D3.js, Tailwind CSS, Anime.js).
-   - Use Cursor AI to generate boilerplate: “Scaffold Python backend with Flask API and Electron frontend with Tailwind.”
+   - DONE Create directories: `backend` (Python), `frontend` (Electron/JS), `assets` (SVGs).
+   - DONE Initialize Python project with `pyproject.toml` or `requirements.txt`.
+   - DONE Initialize Electron project with `package.json` (include D3.js, Tailwind CSS, Anime.js).
+   - DONE Use Cursor AI to generate boilerplate: “Scaffold Python backend with Flask API and Electron frontend with Tailwind.”
 
 3. **Develop FEA Prototype (Single-Span Beam)**
 
-   - Write Python code for FEA of a simply supported beam with a point load (1.0 factor).
-   - Implement stiffness matrix assembly, displacement solver, and force calculations (reactions, shear, moment).
-   - Use NumPy for matrix operations and SciPy for sparse solvers.
-   - Test against manual calculations (e.g., 20-ft beam, 10-kip midspan load: max moment = 50 kip-ft).
-   - Prompt Cursor AI: “Generate Python FEA for single-span beam with point load, using NumPy/SciPy.”
+   - DONE Write Python code for FEA of a simply supported beam with a point load (1.0 factor).
+   - DONE Implement stiffness matrix assembly, displacement solver, and force calculations (reactions, shear, moment).
+   - DONE Use NumPy for matrix operations and SciPy for sparse solvers.
+   - DONETest against manual calculations (e.g., 20-ft beam, 10-kip midspan load: max moment = 50 kip-ft).
+   - DONE Prompt Cursor AI: “Generate Python FEA for single-span beam with point load, using NumPy/SciPy.”
 
 4. **Create Minimalist SVG Assets**
 
-   - Use Inkscape to create SVGs for supports (pinned: triangle, fixed: rectangle, roller: circle) and loads (point: dot, UDL: bar).
-   - Alternatively, source open-source SVGs from Heroicons or similar.
-   - Store in `assets` directory.
+   - DONE Use Inkscape to create SVGs for supports (pinned: triangle, fixed: rectangle, roller: circle) and loads (point: dot, UDL: bar).
+   - DONE Alternatively, source open-source SVGs from Heroicons or similar.
+   - DONE Store in `assets` directory.
 
 5. **Implement Basic JSON Saving**
 
