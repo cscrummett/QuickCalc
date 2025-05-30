@@ -41,6 +41,47 @@ def test_simply_supported_beam_midspan_load():
 
 def test_simply_supported_beam_quarter_point_load():
     """Test a simply supported beam with a point load at quarter point."""
+    # Create a 20-ft beam with 10 elements
+    beam = BeamAnalyzer(
+        length=20.0,
+        num_elements=10,
+        E=29000.0,
+        I=100.0
+    )
+    
+    # Apply 10-kip point load at L/4
+    loads = [PointLoad(position=5.0, magnitude=10.0)]
+    
+    # Solve
+    U, V, M = beam.solve(loads)
+    
+    # Expected results from manual calculations
+    # Left reaction = 3P/4 = 7.5 kips
+    # Right reaction = P/4 = 2.5 kips
+    # Max moment = 3PL/16 = 37.5 kip-ft
+    
+    # Test reactions
+    assert np.isclose(V[0], 7.5)  # Left reaction
+    assert np.isclose(V[-1], 2.5)  # Right reaction
+    
+    # Test moment at load point
+    # Find the node at the load position
+    load_node_idx = None
+    for i, node in enumerate(beam.nodes):
+        if np.isclose(node.x / 12.0, 5.0):  # Convert from inches to feet
+            load_node_idx = i
+            break
+    assert load_node_idx is not None, "No node found at load position"
+    
+    # Test moment at load point
+    assert np.isclose(M[load_node_idx], 37.5)  # Moment at load point
+    
+    # Test maximum moment magnitude
+    max_moment = np.max(np.abs(M))  # Get maximum absolute moment
+    assert np.isclose(max_moment, 37.5)  # Maximum moment
+
+def test_simply_supported_beam_quarter_point_load_exact_results():
+    """Test a simply supported beam with a point load at quarter point."""
     # Create a 20-ft beam with 20 elements for better accuracy
     beam = BeamAnalyzer(
         length=20.0,
@@ -69,4 +110,4 @@ def test_simply_supported_beam_quarter_point_load():
     assert np.abs((max_moment - 37.5) / 37.5) < 0.01  # Relative difference
 
 if __name__ == '__main__':
-    pytest.main([__file__]) 
+    pytest.main([__file__])

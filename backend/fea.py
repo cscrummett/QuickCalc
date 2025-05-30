@@ -49,27 +49,38 @@ class BeamAnalyzer:
         self.nodes = []
         self.elements = []
     
-    def _create_mesh(self):
-        """Create uniform mesh with equal element lengths."""
-        # Create nodes at uniform spacing
+    def _create_mesh(self, loads: List[PointLoad]):
+        """Create mesh with nodes at load and support locations."""
+        # Convert load positions to inches
+        load_positions = [load.position * 12.0 for load in loads]
+        
+        # Get unique positions that need nodes:
+        # - Both ends of the beam
+        # - Load positions
+        positions = set([0.0, self.length])
+        positions.update(load_positions)
+        
+        # Sort positions
+        positions = sorted(positions)
+        
+        # Create nodes at these positions
         self.nodes = []
-        for i in range(self.num_elements + 1):
-            x = i * self.element_length
+        for x in positions:
             node = Node(x=x)
             # Add supports
-            if i == 0:  # Left end
+            if x == 0.0:  # Left end
                 node.pinned = True
-            elif i == self.num_elements:  # Right end
+            elif x == self.length:  # Right end
                 node.pinned = True
             self.nodes.append(node)
         
-        # Create elements
+        # Create elements between nodes
         self.elements = []
-        for i in range(self.num_elements):
+        for i in range(len(self.nodes) - 1):
             element = Element(
                 node1_idx=i,
                 node2_idx=i + 1,
-                length=self.element_length,
+                length=self.nodes[i + 1].x - self.nodes[i].x,
                 E=self.E,
                 I=self.I
             )
@@ -117,7 +128,7 @@ class BeamAnalyzer:
             - Bending moments at nodes (kip-ft, positive causes tension in bottom fiber)
         """
         self.loads = loads
-        self._create_mesh()
+        self._create_mesh(loads)  # Pass loads to create mesh with nodes at load positions
         
         # Get number of nodes and DOFs
         n_nodes = len(self.nodes)
@@ -143,9 +154,17 @@ class BeamAnalyzer:
                 for j in range(4):
                     K[dofs[i], dofs[j]] += k[i, j]
         
-        # Apply loads
-        for load in self.loads:
-            F += self._distribute_point_load(load)
+        # Apply loads directly to the nodes at load positions
+        for load in loads:
+            # Convert load position to inches
+            x_load = load.position * 12.0
+            
+            # Find the node at this exact position
+            for i, node in enumerate(self.nodes):
+                if node.x == x_load:
+                    # Apply load to vertical DOF of this node
+                    F[2*i, 0] = load.magnitude
+                    break
         
         # Apply boundary conditions using penalty method
         large_value = 1e12
