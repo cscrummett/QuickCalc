@@ -2,10 +2,9 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuickCalc</title>
-    <script src="./node_modules/d3/dist/d3.min.js"></script>
-    <script src="./node_modules/animejs/lib/anime.min.js"></script>
-    <link href="./node_modules/tailwindcss/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Tailwind will be imported through the webpack build process -->
     <style>
         body {
             margin: 0;
@@ -15,28 +14,11 @@
     </style>
 </head>
 <body>
-    <div class="flex h-screen">
-        <!-- Sidebar -->
-        <div class="w-64 bg-white shadow-lg">
-            <div class="p-4">
-                <h1 class="text-xl font-bold text-gray-800">QuickCalc</h1>
-            </div>
-            <div id="project-list" class="p-4">
-                <!-- Project list will be populated here -->
-            </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="flex-1 p-6">
-            <div id="beam-canvas" class="w-full h-64 bg-white rounded-lg shadow-lg mb-6">
-                <!-- Beam visualization will be rendered here -->
-            </div>
-            <div id="controls" class="grid grid-cols-2 gap-6">
-                <!-- Input controls will be added here -->
-            </div>
-        </div>
-    </div>
-
-    <script src="renderer.js"></script>
+    <!-- React root element -->
+    <div id="root"></div>
+    
+    <!-- Load the bundled React application -->
+    <!-- The bundle.js will include all necessary dependencies -->
+    <script src="./dist/bundle.js"></script>
 </body>
-</html> 
+</html>
