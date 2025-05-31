@@ -109,5 +109,44 @@ def test_simply_supported_beam_quarter_point_load_exact_results():
     max_moment = np.max(np.abs(M))  # Get maximum absolute moment
     assert np.abs((max_moment - 37.5) / 37.5) < 0.01  # Relative difference
 
+def test_simply_supported_beam_distributed_load():
+    """Test a simply supported beam with a uniform distributed load."""
+    # Create a 20-ft beam with 10 elements
+    beam = BeamAnalyzer(
+        length=20.0,  # ft
+        num_elements=10,
+        E=29000.0,  # ksi
+        I=100.0  # in^4
+    )
+    
+    # Apply 1 kip/ft uniform distributed load over entire length
+    # Convert to equivalent point loads at element midpoints
+    w = 1.0  # kip/ft
+    loads = []
+    for i in range(beam.num_elements):
+        pos = (i + 0.5) * beam.length / beam.num_elements  # Midpoint of each element
+        mag = w * beam.length / beam.num_elements  # Load magnitude for each element
+        loads.append(PointLoad(position=pos, magnitude=mag))
+    
+    # Solve
+    U, V, M = beam.solve(loads)
+    
+    # Expected results from manual calculations
+    # Reactions = wL/2 = 1 * 20 / 2 = 10 kips each
+    # Max moment = wL^2/8 = 1 * (20)^2 / 8 = 50 kip-ft
+    # Max deflection = 5wL^4/(384EI) = 5 * 1 * (240)^4 / (384 * 29000 * 100) = 1.241 in = 0.1034 ft
+    
+    # Test reactions
+    assert np.abs((V[0] - 10.0) / 10.0) < 1e-3  # Relative difference
+    assert np.abs((V[-1] - 10.0) / 10.0) < 1e-3  # Relative difference
+    
+    # Test maximum moment (should occur at midspan)
+    max_moment_idx = np.argmax(np.abs(M))
+    assert np.abs((M[max_moment_idx] - 50.0) / 50.0) < 1e-3  # Relative difference
+    
+    # Test maximum deflection (should occur at midspan)
+    max_deflection_idx = np.argmax(np.abs(U))
+    assert np.abs((U[max_deflection_idx] - 0.1034) / 0.1034) < 1e-3  # Relative difference
+
 if __name__ == '__main__':
     pytest.main([__file__])
