@@ -1,9 +1,12 @@
 """
 Enhanced Finite Element Analysis module for beam analysis with distributed loads.
+Supports load combinations according to ASCE 7 and custom combinations.
 """
 import numpy as np
+import os
+import json
 from dataclasses import dataclass
-from typing import List, Tuple, Optional, Set
+from typing import List, Tuple, Optional, Set, Dict, Union
 from enum import Enum
 
 class SupportType(Enum):
@@ -74,7 +77,8 @@ class Support:
 class BeamAnalyzer:
     """Enhanced beam analyzer with distributed load support and adaptive meshing."""
     
-    def __init__(self, length: float, min_elements: int = 10, E: float = 29000.0, I: float = 100.0):
+    def __init__(self, length: float, min_elements: int = 10, E: float = 29000.0, I: float = 100.0, 
+             beam_id: str = None):
         """
         Initialize beam analyzer.
         
@@ -88,12 +92,14 @@ class BeamAnalyzer:
         self.min_elements = min_elements
         self.E = E
         self.I = I
+        self.beam_id = beam_id or f"beam_{id(self)}"  # Unique ID for this beam
         self.point_loads = []
         self.distributed_loads = []
         self.supports = []
         self.nodes = []
         self.elements = []
         self.results = None
+        self.load_combination_info = None
         
         # Set default supports (simply supported)
         self.supports = [
@@ -288,7 +294,8 @@ class BeamAnalyzer:
         
         return K_reduced, F_reduced, free_dofs
     
-    def solve(self, point_loads: List[PointLoad] = None, distributed_loads: List[DistributedLoad] = None) -> dict:
+    def solve(self, point_loads: List[PointLoad] = None, distributed_loads: List[DistributedLoad] = None, 
+         load_combination: str = None, load_combination_manager = None) -> dict:
         """
         Solve the beam problem with point and distributed loads.
         
@@ -300,9 +307,24 @@ class BeamAnalyzer:
             - max_deflection: maximum deflection and its location
             - nodes: list of Node objects
             - elements: list of Element objects
+            - load_combination: information about applied load combination (if any)
         """
-        self.point_loads = point_loads or []
-        self.distributed_loads = distributed_loads or []
+        # If load_combination is specified, use the combined loads
+        if load_combination and load_combination_manager:
+            combined_point_loads, combined_distributed_loads = load_combination_manager.get_combined_loads(load_combination)
+            self.point_loads = combined_point_loads
+            self.distributed_loads = combined_distributed_loads
+            
+            # Store the load combination info in results
+            self.load_combination_info = {
+                'name': load_combination,
+                'description': next((c.get_description() for c in load_combination_manager.combinations 
+                                  if c.name == load_combination), '')
+            }
+        else:
+            self.point_loads = point_loads or []
+            self.distributed_loads = distributed_loads or []
+            self.load_combination_info = None
         
         # Create adaptive mesh
         self._create_adaptive_mesh()
@@ -313,7 +335,7 @@ class BeamAnalyzer:
         # Initialize global matrices
         K = np.zeros((n_dof, n_dof))
         F = np.zeros(n_dof)
-        
+    
         # Assemble global stiffness matrix
         for element in self.elements:
             k = self.element_stiffness_matrix(element)
@@ -330,7 +352,7 @@ class BeamAnalyzer:
             for i in range(4):
                 for j in range(4):
                     K[dofs[i], dofs[j]] += k[i, j]
-        
+    
         # Apply point loads - since we have nodes at exact load positions, this is precise
         for load in self.point_loads:
             x_load = load.position * 12.0  # Convert to inches
@@ -341,7 +363,7 @@ class BeamAnalyzer:
                     break
             else:
                 raise ValueError(f"No node found at point load position {load.position} ft. This shouldn't happen with adaptive mesh.")
-        
+    
         # Apply distributed loads
         for dist_load in self.distributed_loads:
             for element in self.elements:
@@ -355,7 +377,7 @@ class BeamAnalyzer:
                     ]
                     for i, dof in enumerate(dofs):
                         F[dof] += nodal_forces[i]
-        
+    
         # Apply boundary conditions
         K_reduced, F_reduced, free_dofs = self._apply_boundary_conditions(K, F)
         
@@ -366,7 +388,7 @@ class BeamAnalyzer:
         U = np.zeros(n_dof)
         for i, dof in enumerate(free_dofs):
             U[dof] = U_reduced[i]
-        
+    
         # Calculate reactions
         reactions = K @ U - F
         
@@ -381,7 +403,7 @@ class BeamAnalyzer:
                     'moment': reaction_moment,
                     'type': node.support_type.value
                 }
-        
+    
         # Find maximum deflection
         displacements = U[::2]  # Extract displacement DOFs
         max_disp_idx = np.argmax(np.abs(displacements))
@@ -401,11 +423,12 @@ class BeamAnalyzer:
             'max_deflection': max_deflection,
             'nodes': self.nodes,
             'elements': self.elements,
-            'num_elements': len(self.elements)
+            'num_elements': len(self.elements),
+            'load_combination': self.load_combination_info
         }
         
         return self.results
-    
+
     def get_deflection_at(self, position: float) -> float:
         """Get deflection at specified position (in feet) using interpolation if needed."""
         if self.results is None:
@@ -430,7 +453,7 @@ class BeamAnalyzer:
                 return disp1 + ratio * (disp2 - disp1)
         
         raise ValueError(f"Position {position} ft is outside beam length")
-    
+
     def get_summary(self) -> str:
         """Get a summary of analysis results."""
         if self.results is None:
@@ -458,5 +481,10 @@ Support Reactions:"""
         summary += f"\n  Point Loads: {len(self.point_loads)}"
         summary += f"\n  Distributed Loads: {len(self.distributed_loads)}"
         
+        # Add load combination info if available
+        if self.results.get('load_combination'):
+            combo_info = self.results['load_combination']
+            summary += f"\n\nLoad Combination: {combo_info['name']}"
+            summary += f"\n  {combo_info['description']}"
+        
         return summary
-

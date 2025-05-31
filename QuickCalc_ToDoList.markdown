@@ -34,31 +34,31 @@ This to-do list provides a step-by-step guide for building **QuickCalc**, a cros
 
 5. **Implement Basic JSON Saving**
 
-   - Create a JSON schema for a single beam (spans, section, material, loads, supports).
-   - Write Python functions to save/load beam data to/from JSON.
-   - Prompt Cursor AI: “Generate Python code to save beam data as JSON.”
+   - DONE Create a JSON schema for a single beam (spans, section, material, loads, supports).
+   - DONE Write Python functions to save/load beam data to/from JSON.
+   - DONE Prompt Cursor AI: “Generate Python code to save beam data as JSON.”
 
 6. **Test Prototype**
 
-   - Run FEA for multiple test cases (e.g., different lengths, loads).
-   - Validate results against Enercalc or manual calculations.
-   - Save a test beam to JSON and verify loading.
+   - DONE Run FEA for multiple test cases (e.g., different lengths, loads).
+   - DONE Validate results against Enercalc or manual calculations.
+   - DONE Save a test beam to JSON and verify loading.
 
 ## Phase 2: Core Development
 
  7. **Extend FEA to Multi-Span Beams**
 
-    - Modify FEA code to handle multi-span beams (up to 5 spans, 10–20 elements/span).
-    - Update stiffness matrix assembly for continuous beams with varying supports (pinned, fixed, roller).
-    - Compute reactions, shear, moment, and deflection across all spans.
-    - Prompt Cursor AI: “Extend Python FEA for multi-span beams with pinned/fixed supports.”
+    - DONE Modify FEA code to handle multi-span beams (up to 5 spans, 10–20 elements/span).
+    - DONE Update stiffness matrix assembly for continuous beams with varying supports (pinned, fixed, roller).
+    - DONE Compute reactions, shear, moment, and deflection across all spans.
+    - DONE Prompt Cursor AI: “Extend Python FEA for multi-span beams with pinned/fixed supports.”
 
  8. **Implement Load Combinations**
 
-    - Add logic for load combinations: none (1.0 factor, default), ASCE 7 (e.g., 1.2D + 1.6L), or custom (user-defined factors).
-    - Store load combination settings in JSON (per beam).
-    - Update FEA to apply combination factors to loads.
-    - Prompt Cursor AI: “Add ASCE 7 and custom load combinations to Python FEA.”
+    - DONE Add logic for load combinations: none (1.0 factor, default), ASCE 7 (e.g., 1.2D + 1.6L), or custom (user-defined factors).
+    - DONE Store load combination settings in JSON (per beam).
+    - DONE Update FEA to apply combination factors to loads.
+    - DONE Prompt Cursor AI: "Add ASCE 7 and custom load combinations to Python FEA."
 
  9. **Build Core UI**
 
