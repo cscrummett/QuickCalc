@@ -445,7 +445,7 @@ public class BeamCanvas extends Canvas {
         gc.strokeLine(x, y, x - arrowHeadSize, y - arrowHeadSize);
         gc.strokeLine(x, y, x + arrowHeadSize, y - arrowHeadSize);
         
-        // Draw magnitude text with white background
+        // Draw magnitude text with white background above the arrow
         String text = String.format("%.1f kip", magnitude);
         gc.setTextAlign(TextAlignment.CENTER);
         
@@ -455,15 +455,18 @@ public class BeamCanvas extends Canvas {
         double textWidth = tempText.getLayoutBounds().getWidth();
         double textHeight = tempText.getLayoutBounds().getHeight();
         
+        // Position text above the arrow with some padding
+        double textY = y - arrowLength - 5; // Position above the arrow with 5px padding
+        
         // Draw white background rectangle
         double padding = 2;
         gc.setFill(Color.WHITE);
-        gc.fillRect(x - textWidth/2 - padding, y - arrowLength / 2 - textHeight - padding, 
+        gc.fillRect(x - textWidth/2 - padding, textY - textHeight - padding, 
                    textWidth + 2*padding, textHeight + 2*padding);
         
         // Draw text
         gc.setFill(UIConstants.POINT_LOAD_COLOR);
-        gc.fillText(text, x, y - arrowLength / 2);
+        gc.fillText(text, x, textY);
     }
     
     /**
