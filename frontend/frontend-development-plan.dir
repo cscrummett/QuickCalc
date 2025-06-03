@@ -1,0 +1,249 @@
+# Beam Designer Development Plan
+
+## Stage 0: Project Setup
+**Goal**: Set up JavaFX project with build tools and dependencies
+
+### Tasks:
+- [DONE] Create new Gradle project structure
+- [DONE] Add `build.gradle` with JavaFX dependencies
+- [DONE] Add Jackson JSON library for Python communication
+- [DONE] Set up basic directory structure:
+  ```
+  src/main/java/com/beamdesigner/
+  src/main/resources/
+  src/test/java/
+  ```
+- [DONE] Test that JavaFX runs with simple "Hello World" window
+- [DONE] Configure IDE for JavaFX development
+
+**Success Criteria**: Can run a basic JavaFX window
+
+---
+
+## Stage 1: Basic Window + Static Beam Drawing
+**Goal**: Get a window open with a beam drawn on it
+
+### Files to Create:
+- [DONE] `Main.java` - JavaFX application entry point
+- [DONE] `models/BeamModel.java` - Simple beam data (just length for now)
+- [DONE] `views/components/BeamCanvas.java` - Canvas that draws a horizontal line
+- [DONE] `src/main/resources/fxml/main-view.fxml` - Basic window layout
+- [DONE] `controllers/MainController.java` - Connects FXML to canvas
+
+### Tasks:
+- [DONE] Create JavaFX Application class with primary stage setup
+- [DONE] Create BeamModel with basic properties (length, maybe material)
+- [DONE] Create BeamCanvas extending Canvas with basic drawing
+- [DONE] Create FXML layout with canvas in center
+- [DONE] Wire controller to load FXML and initialize canvas
+- [DONE] Draw simple horizontal line representing beam
+
+**Success Criteria**: Window opens showing a horizontal line (beam)
+
+---
+
+## Stage 2: Add Coordinate System
+**Goal**: Proper engineering coordinates with zoom/pan capability
+
+### Files to Add:
+- [DONE] `utils/Point2D.java` - Basic geometric point class
+- [DONE] `utils/ViewTransform.java` - Coordinate conversion between screen/engineering
+- [DONE] `utils/CoordinateConverter.java` - Helper utilities
+
+### Files to Modify:
+- [DONE] `BeamCanvas.java` - Integrate ViewTransform for all drawing operations
+- [DONE] Add mouse event handlers for zoom (scroll) and pan (mouse wheel-click drag)
+
+### Tasks:
+- [DONE] Implement Point2D with basic vector operations
+- [DONE] Implement ViewTransform with screen ↔ engineering conversion
+- [DONE] Handle Y-axis flip (engineering Y+ up, screen Y+ down)
+- [DONE] Add zoom functionality centered on mouse cursor
+- [DONE] Add pan functionality with mouse wheel-click drag
+- [DONE] Auto-fit beam to canvas with padding
+- [DONE] Test coordinate system accuracy
+
+**Success Criteria**: Same visual result, but can zoom/pan smoothly
+
+---
+
+## Stage 3: Add Static Supports and Loads
+**Goal**: Draw supports and loads at fixed positions
+
+### Files to Add:
+- [DONE] `models/Support.java` - Support data model (position, type)
+- [DONE] `models/Load.java` - Load data model (position, magnitude, type)
+- [DONE] `constants/BeamConstants.java` - Engineering constants
+- [DONE] `constants/UIConstants.java` - Display constants (colors, sizes)
+
+### Files to Modify:
+- [ ] `BeamModel.java` - Add collections for supports and loads
+- [ ] `BeamCanvas.java` - Add drawing methods for supports and loads
+
+### Tasks:
+- [ ] Define Support types (pinned, roller, fixed)
+- [ ] Define Load types (point, UDL, triangular)
+- [ ] Create drawing methods for each support type symbol
+- [ ] Create drawing methods for each load type (arrows, distributed loads)
+- [ ] Add sample supports and loads to BeamModel for testing
+- [ ] Implement proper scaling of symbols based on zoom level
+
+**Success Criteria**: Shows beam with pre-defined supports and loads
+
+---
+
+## Stage 4: Make Elements Interactive
+**Goal**: Click and drag loads/supports along the beam
+
+### Files to Add:
+- [ ] `views/components/InteractiveElement.java` - Base class for clickable elements
+- [ ] `views/components/LoadMarker.java` - Draggable load representation
+- [ ] `views/components/SupportMarker.java` - Draggable support representation
+- [ ] `exceptions/InvalidBeamException.java` - For invalid positioning
+
+### Files to Modify:
+- [ ] `BeamCanvas.java` - Add comprehensive mouse interaction logic
+- [ ] Add hit testing to find elements under mouse cursor
+
+### Tasks:
+- [ ] Implement mouse press/drag/release handlers
+- [ ] Add hit testing for supports and loads
+- [ ] Implement dragging with live preview
+- [ ] Add snapping to grid or specific intervals
+- [ ] Prevent invalid positioning (loads/supports off beam)
+- [ ] Add visual feedback during dragging (hover effects)
+- [ ] Update model when elements are moved
+
+**Success Criteria**: Can drag loads and supports along the beam smoothly
+
+---
+
+## Stage 5: Add Input Forms
+**Goal**: Properties panel for precise input and element selection
+
+### Files to Add:
+- [ ] `src/main/resources/fxml/properties-panel.fxml` - Input form layout
+- [ ] `controllers/PropertiesController.java` - Form controller
+- [ ] `views/dialogs/LoadPropertiesDialog.java` - Detailed load editing
+- [ ] `views/dialogs/SupportPropertiesDialog.java` - Detailed support editing
+
+### Files to Modify:
+- [ ] `src/main/resources/fxml/main-view.fxml` - Add properties panel to layout
+- [ ] `controllers/MainController.java` - Connect form to beam model
+- [ ] `BeamCanvas.java` - Add element selection highlighting
+
+### Tasks:
+- [ ] Create properties panel with input fields
+- [ ] Implement two-way data binding between forms and model
+- [ ] Add element selection (click to select, highlight selected)
+- [ ] Show selected element properties in panel
+- [ ] Allow adding new loads/supports through forms
+- [ ] Add delete functionality for selected elements
+- [ ] Form validation for engineering constraints
+
+**Success Criteria**: Forms update when selecting elements, changes reflect in drawing
+
+---
+
+## Stage 6: Backend Integration
+**Goal**: Connect to Python analysis engine
+
+### Files to Add:
+- [ ] `services/BeamAnalysisService.java` - Python subprocess communication
+- [ ] `models/BeamResults.java` - Analysis results data model
+- [ ] `models/AnalysisResponse.java` - JSON response wrapper
+- [ ] `beam_analyzer.py` - Python script wrapper for your existing code
+- [ ] `exceptions/BeamAnalysisException.java` - Backend communication errors
+
+### Files to Modify:
+- [ ] Add analysis triggers to UI interactions
+- [ ] Add loading indicators during analysis
+
+### Tasks:
+- [ ] Design JSON schema for beam data exchange
+- [ ] Implement subprocess communication with Python
+- [ ] Create Python wrapper script for your existing analysis code
+- [ ] Add error handling for backend failures
+- [ ] Implement async analysis to keep UI responsive
+- [ ] Add progress indicators for long calculations
+- [ ] Cache results to avoid redundant calculations
+
+**Success Criteria**: Analysis runs when beam changes, basic results returned
+
+---
+
+## Stage 7: Results Display
+**Goal**: Show calculation results and diagrams
+
+### Files to Add:
+- [ ] `src/main/resources/fxml/results-panel.fxml` - Results layout
+- [ ] `controllers/ResultsController.java` - Results display controller
+- [ ] `views/components/DiagramCanvas.java` - For shear/moment diagrams
+
+### Files to Modify:
+- [ ] `src/main/resources/fxml/main-view.fxml` - Add results panel
+- [ ] `controllers/MainController.java` - Connect results to analysis
+
+### Tasks:
+- [ ] Display numerical results (max moment, deflection, reactions)
+- [ ] Draw shear force diagram
+- [ ] Draw bending moment diagram
+- [ ] Add diagram interaction (hover for values)
+- [ ] Color coding for critical values
+- [ ] Export results to PDF/image
+- [ ] Add units display and conversion
+
+**Success Criteria**: Complete analysis results with diagrams
+
+---
+
+## Stage 8: File Operations
+**Goal**: Save/load beam designs
+
+### Files to Add:
+- [ ] `services/FileService.java` - File I/O operations
+- [ ] `models/ProjectFile.java` - Project file format definition
+
+### Files to Modify:
+- [ ] Add file menu to main window
+- [ ] Add project state management
+
+### Tasks:
+- [ ] Implement save/load in JSON format
+- [ ] Add "New", "Open", "Save", "Save As" menu items
+- [ ] Track unsaved changes
+- [ ] Add recent files list
+- [ ] Export beam diagram as image
+- [ ] Import/export to common structural formats (if needed)
+
+**Success Criteria**: Can save and reload complete beam designs
+
+---
+
+## Stage 9: Polish & Advanced Features
+**Goal**: Professional finish and advanced functionality
+
+### Advanced Features:
+- [ ] Multi-span beam support
+- [ ] Material property database
+- [ ] Beam section database
+- [ ] Advanced load types (moving loads, etc.)
+- [ ] Design code checks
+- [ ] Reporting system
+- [ ] Undo/Redo functionality
+- [ ] Keyboard shortcuts
+- [ ] Tooltips and help system
+
+### Polish:
+- [ ] Modern UI styling (Tableau-like appearance)
+- [ ] Smooth animations
+- [ ] Professional icons
+- [ ] Comprehensive error messages
+- [ ] Performance optimization
+- [ ] Memory usage optimization
+- [ ] Comprehensive testing
+- [ ] Documentation
+
+**Success Criteria**: Production-ready application
+
+---

@@ -1,0 +1,198 @@
+# JavaFX Beam Designer Project Structure
+
+```
+beam-designer/
+├── build.gradle                           # Build configuration and dependencies
+├── gradle/                                # Gradle wrapper files
+│   └── wrapper/
+├── gradlew                               # Gradle wrapper script (Unix)
+├── gradlew.bat                           # Gradle wrapper script (Windows)
+├── README.md                             # Project documentation
+├── .gitignore                            # Git ignore rules
+├── docs/                                 # Project documentation
+│   ├── user-guide.md
+│   ├── developer-guide.md
+│   └── api-docs/
+└── src/
+    ├── main/
+    │   ├── java/com/beamdesigner/
+    │   │   ├── Main.java                 # Application entry point
+    │   │   │
+    │   │   ├── controllers/              # FXML Controllers (MVC pattern)
+    │   │   │   ├── MainController.java           # Primary window controller
+    │   │   │   ├── BeamCanvasController.java     # Beam drawing/interaction controller
+    │   │   │   ├── PropertiesController.java     # Input forms controller
+    │   │   │   ├── ResultsController.java        # Results display controller
+    │   │   │   ├── MenuBarController.java        # Menu actions controller
+    │   │   │   └── ToolbarController.java        # Toolbar actions controller
+    │   │   │
+    │   │   ├── models/                   # Data Models (MVC pattern)
+    │   │   │   ├── BeamModel.java                # Core beam data structure
+    │   │   │   ├── Load.java                     # Load properties/position
+    │   │   │   ├── Support.java                  # Support properties/position
+    │   │   │   ├── Material.java                 # Material properties
+    │   │   │   ├── BeamSection.java              # Cross-section properties
+    │   │   │   ├── BeamResults.java              # Analysis results
+    │   │   │   ├── ProjectFile.java              # Project save/load format
+    │   │   │   └── AnalysisResponse.java         # JSON response from Python
+    │   │   │
+    │   │   ├── views/                    # UI Components (MVC pattern)
+    │   │   │   ├── components/                   # Custom UI components
+    │   │   │   │   ├── BeamCanvas.java           # Main beam drawing canvas
+    │   │   │   │   ├── DiagramCanvas.java        # Shear/moment diagram canvas
+    │   │   │   │   ├── InteractiveBeam.java      # Interactive beam representation
+    │   │   │   │   ├── LoadMarker.java           # Draggable load indicators
+    │   │   │   │   ├── SupportMarker.java        # Draggable support indicators
+    │   │   │   │   ├── GridOverlay.java          # Grid/snap overlay
+    │   │   │   │   └── MeasurementTool.java      # Dimension display tool
+    │   │   │   │
+    │   │   │   └── dialogs/                      # Dialog windows
+    │   │   │       ├── LoadPropertiesDialog.java    # Edit load properties
+    │   │   │       ├── SupportPropertiesDialog.java # Edit support properties
+    │   │   │       ├── MaterialDialog.java          # Material selection
+    │   │   │       ├── SectionDialog.java           # Section selection
+    │   │   │       ├── AboutDialog.java             # About application
+    │   │   │       └── PreferencesDialog.java       # User preferences
+    │   │   │
+    │   │   ├── services/                 # Business Logic Services
+    │   │   │   ├── BeamAnalysisService.java      # Python communication
+    │   │   │   ├── FileService.java              # Save/load operations
+    │   │   │   ├── ExportService.java            # Export to PDF/images
+    │   │   │   ├── ValidationService.java        # Input validation
+    │   │   │   └── DatabaseService.java          # Material/section database
+    │   │   │
+    │   │   ├── utils/                    # Utility Classes
+    │   │   │   ├── Point2D.java                  # 2D point geometry
+    │   │   │   ├── ViewTransform.java            # Coordinate system conversion
+    │   │   │   ├── CoordinateConverter.java      # Engineering ↔ screen coords
+    │   │   │   ├── DrawingUtils.java             # Common drawing utilities
+    │   │   │   ├── MathUtils.java                # Engineering calculations
+    │   │   │   ├── UnitConverter.java            # Unit conversions
+    │   │   │   └── ColorScheme.java              # Application color management
+    │   │   │
+    │   │   ├── constants/                # Application Constants
+    │   │   │   ├── BeamConstants.java            # Engineering constants
+    │   │   │   ├── UIConstants.java              # UI spacing, sizes, colors
+    │   │   │   ├── FileConstants.java            # File formats, extensions
+    │   │   │   └── AnalysisConstants.java        # Analysis parameters
+    │   │   │
+    │   │   └── exceptions/               # Custom Exceptions
+    │   │       ├── BeamAnalysisException.java    # Analysis failures
+    │   │       ├── InvalidBeamException.java     # Invalid beam geometry
+    │   │       ├── FileOperationException.java   # File I/O errors
+    │   │       └── ValidationException.java      # Input validation errors
+    │   │
+    │   └── resources/                    # Application Resources
+    │       ├── fxml/                             # FXML Layout Files
+    │       │   ├── main-view.fxml                # Main application window
+    │       │   ├── properties-panel.fxml         # Properties input panel
+    │       │   ├── results-panel.fxml            # Results display panel
+    │       │   ├── toolbar.fxml                  # Application toolbar
+    │       │   ├── menubar.fxml                  # Menu bar
+    │       │   └── dialogs/
+    │       │       ├── load-properties.fxml      # Load properties dialog
+    │       │       ├── support-properties.fxml   # Support properties dialog
+    │       │       ├── material-selection.fxml   # Material selection dialog
+    │       │       └── preferences.fxml          # Preferences dialog
+    │       │
+    │       ├── css/                              # Styling
+    │       │   ├── application.css               # Main application styles
+    │       │   ├── beam-canvas.css               # Canvas-specific styles
+    │       │   ├── forms.css                     # Form styling
+    │       │   ├── dialogs.css                   # Dialog styling
+    │       │   └── themes/
+    │       │       ├── light-theme.css           # Light theme
+    │       │       └── dark-theme.css            # Dark theme
+    │       │
+    │       ├── icons/                            # Application Icons
+    │       │   ├── app-icon.png                  # Main application icon
+    │       │   ├── toolbar/                      # Toolbar icons
+    │       │   │   ├── new.png
+    │       │   │   ├── open.png
+    │       │   │   ├── save.png
+    │       │   │   ├── analyze.png
+    │       │   │   └── export.png
+    │       │   └── loads/                        # Load type icons
+    │       │       ├── point-load.png
+    │       │       ├── distributed-load.png
+    │       │       └── moment.png
+    │       │
+    │       ├── data/                             # Static Data Files
+    │       │   ├── materials.json                # Material properties database
+    │       │   ├── sections.json                 # Standard beam sections
+    │       │   └── design-codes.json             # Design code parameters
+    │       │
+    │       └── python/                           # Python Integration
+    │           ├── beam_analyzer.py              # Main Python analysis script
+    │           ├── requirements.txt              # Python dependencies
+    │           └── analysis/                     # Your existing Python modules
+    │               ├── beam_analysis.py
+    │               ├── load_combinations.py
+    │               └── design_checks.py
+    │
+    └── test/                             # Test Code
+        ├── java/com/beamdesigner/
+        │   ├── models/                           # Model unit tests
+        │   │   ├── BeamModelTest.java
+        │   │   ├── LoadTest.java
+        │   │   └── SupportTest.java
+        │   │
+        │   ├── services/                         # Service integration tests
+        │   │   ├── BeamAnalysisServiceTest.java
+        │   │   ├── FileServiceTest.java
+        │   │   └── ValidationServiceTest.java
+        │   │
+        │   ├── utils/                            # Utility tests
+        │   │   ├── ViewTransformTest.java
+        │   │   ├── CoordinateConverterTest.java
+        │   │   └── MathUtilsTest.java
+        │   │
+        │   └── integration/                      # Integration tests
+        │       ├── PythonIntegrationTest.java
+        │       └── UIIntegrationTest.java
+        │
+        └── resources/                            # Test Resources
+            ├── test-beams/                       # Sample beam files for testing
+            │   ├── simple-beam.json
+            │   ├── continuous-beam.json
+            │   └── complex-beam.json
+            └── python/                           # Python test scripts
+                └── test_beam_analyzer.py
+```
+
+## Key Design Principles
+
+### 1. **MVC Architecture**
+- **Models**: Pure data classes with business logic
+- **Views**: UI components and FXML files
+- **Controllers**: Mediate between models and views
+
+### 2. **Package Organization**
+- **Functional grouping**: Related classes grouped by function
+- **Separation of concerns**: Each package has a single responsibility
+- **Clear dependencies**: Lower-level utilities, higher-level controllers
+
+### 3. **Resource Management**
+- **FXML**: All layouts in dedicated directory
+- **CSS**: Modular styling with theme support
+- **Icons**: Organized by function and type
+- **Data**: Static configuration separate from code
+
+### 4. **Testing Structure**
+- **Mirrors main structure**: Easy to find corresponding tests
+- **Unit tests**: For individual classes
+- **Integration tests**: For cross-component functionality
+- **Test resources**: Sample data for testing
+
+### 5. **Python Integration**
+- **Embedded scripts**: Python files within Java resources
+- **Requirements management**: Dependencies clearly specified
+- **Modular design**: Your existing Python code can be dropped in
+
+### 6. **Scalability Considerations**
+- **Plugin architecture**: Easy to add new load types, analysis methods
+- **Theme support**: Multiple visual themes
+- **Internationalization ready**: Resource-based strings
+- **Database ready**: Service layer for future database integration
+
+This structure supports both rapid development and long-term maintainability, following JavaFX and general Java best practices.

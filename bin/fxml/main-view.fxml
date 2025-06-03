@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.Pane?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="com.quickcalc.controllers.MainController">
+   <top>
+      <VBox>
+         <MenuBar>
+            <Menu text="File">
+               <MenuItem text="New" onAction="#handleNew" />
+               <MenuItem text="Open..." onAction="#handleOpen" />
+               <SeparatorMenuItem />
+               <MenuItem text="Save" onAction="#handleSave" />
+               <MenuItem text="Save As..." onAction="#handleSaveAs" />
+               <SeparatorMenuItem />
+               <MenuItem text="Exit" onAction="#handleExit" />
+            </Menu>
+            <Menu text="Edit">
+               <MenuItem text="Undo" onAction="#handleUndo" />
+               <MenuItem text="Redo" onAction="#handleRedo" />
+               <SeparatorMenuItem />
+               <MenuItem text="Preferences" onAction="#handlePreferences" />
+            </Menu>
+            <Menu text="Analysis">
+               <MenuItem text="Run Analysis" onAction="#handleRunAnalysis" />
+               <MenuItem text="Clear Results" onAction="#handleClearResults" />
+            </Menu>
+            <Menu text="Help">
+               <MenuItem text="About" onAction="#handleAbout" />
+            </Menu>
+         </MenuBar>
+         <ToolBar>
+            <Button text="New" onAction="#handleNew" />
+            <Button text="Open" onAction="#handleOpen" />
+            <Button text="Save" onAction="#handleSave" />
+            <Separator orientation="VERTICAL" />
+            <Button text="Add Support" onAction="#handleAddSupport" />
+            <Button text="Add Load" onAction="#handleAddLoad" />
+            <Separator orientation="VERTICAL" />
+            <Button text="Run Analysis" onAction="#handleRunAnalysis" />
+         </ToolBar>
+      </VBox>
+   </top>
+   <center>
+      <!-- This will be replaced with our BeamCanvas -->
+      <Pane fx:id="beamCanvasContainer" style="-fx-background-color: #f0f0f0;" focusTraversable="true" />
+   </center>
+   <right>
+      <!-- This will be our properties panel -->
+      <VBox fx:id="propertiesPanel" prefWidth="300" style="-fx-background-color: #e0e0e0; -fx-padding: 10;" />
+   </right>
+   <bottom>
+      <VBox>
+         <!-- This will be our results panel -->
+         <VBox fx:id="resultsPanel" prefHeight="200" style="-fx-background-color: #e8e8e8; -fx-padding: 10;" />
+         
+         <!-- Status bar with coordinates display -->
+         <HBox fx:id="statusBar" style="-fx-background-color: #d0d0d0; -fx-padding: 3 10 3 10;">
+            <Label fx:id="coordinatesLabel" text="Position: (0.00', 0.00')" />
+         </HBox>
+      </VBox>
+   </bottom>
+</BorderPane>
