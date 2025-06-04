@@ -50,6 +50,7 @@ public class LoadRenderingTest extends Application {
         Button addPointLoadBtn = new Button("Add Point Load");
         Button addDistributedLoadBtn = new Button("Add Distributed Load");
         Button addMomentBtn = new Button("Add Moment");
+        Button addVaryingLoadBtn = new Button("Add Varying Load");
         Button resetBtn = new Button("Reset Beam");
         
         // Set up button actions
@@ -59,7 +60,7 @@ public class LoadRenderingTest extends Application {
         });
         
         addDistributedLoadBtn.setOnAction(e -> {
-            beamModel.addLoad(new Load(5.0, 15.0, -2.0, Load.Type.DISTRIBUTED));
+            beamModel.addLoad(new Load(5.0, 15.0, -2.0));
             beamCanvas.draw();
         });
         
@@ -67,9 +68,15 @@ public class LoadRenderingTest extends Application {
             beamModel.addLoad(new Load(15.0, 10.0, Load.Type.MOMENT));
             beamCanvas.draw();
         });
+
+        addVaryingLoadBtn.setOnAction(e -> {
+            // Varying load (triangular in this case): 0 at 2ft to -4kip/ft at 12ft
+            beamModel.addLoad(new Load(2.0, 12.0, 0.0, -4.0)); 
+            beamCanvas.draw();
+        });
         
         resetBtn.setOnAction(e -> {
-            beamModel.reset();
+            beamModel.reset(20.0);
             beamModel.setLength(20.0);
             // Add default supports
             beamModel.addSupport(new Support(0.0, Support.Type.PINNED));
@@ -79,7 +86,7 @@ public class LoadRenderingTest extends Application {
         
         // Create a button container
         HBox buttonBox = new HBox(10);
-        buttonBox.getChildren().addAll(addPointLoadBtn, addDistributedLoadBtn, addMomentBtn, resetBtn);
+        buttonBox.getChildren().addAll(addPointLoadBtn, addDistributedLoadBtn, addMomentBtn, addVaryingLoadBtn, resetBtn);
         buttonBox.setStyle("-fx-padding: 10;");
         
         // Add components to the root layout

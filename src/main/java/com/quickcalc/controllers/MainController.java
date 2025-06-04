@@ -59,6 +59,13 @@ public class MainController {
         // Initialize the beam model
         beamModel = new BeamModel(20.0); // 20-foot beam
         
+        // Clear default supports
+        beamModel.getSupports().clear();
+        
+        // Add a pinned support at the left end and a fixed support at the right end
+        beamModel.addSupport(new Support(0.0, Support.Type.PINNED));
+        beamModel.addSupport(new Support(beamModel.getLength(), Support.Type.FIXED));
+        
         // Add test loads for Stage 3 testing
         beamModel.addLoad(new Load(10.0, -5.0, Load.Type.POINT)); // Point load at 10 ft
         beamModel.addLoad(new Load(5.0, 15.0, -2.0)); // Distributed load from 5-15 ft

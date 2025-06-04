@@ -1,13 +1,11 @@
 package com.quickcalc.views.components;
 
-import com.quickcalc.constants.BeamConstants;
 import com.quickcalc.constants.UIConstants;
 import com.quickcalc.models.BeamModel;
 import com.quickcalc.models.Load;
 import com.quickcalc.models.Support;
 import com.quickcalc.utils.Point2D;
 import com.quickcalc.utils.ViewTransform;
-import com.quickcalc.utils.CoordinateConverter;
 
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -366,27 +364,35 @@ public class BeamCanvas extends Canvas {
     }
     
     /**
-     * Draw a fixed support (rectangle with hatching)
+     * Draw a fixed support (square with dot at connection point)
      * 
      * @param gc Graphics context
      * @param x X-coordinate
      * @param y Y-coordinate (beam centerline)
      */
     private void drawFixedSupport(GraphicsContext gc, double x, double y) {
-        double width = UIConstants.SUPPORT_SIZE / 2;
-        double height = UIConstants.SUPPORT_SIZE * 2;
+        double size = UIConstants.SUPPORT_SIZE;
+        double halfSize = size / 2;
+        double height = size * 0.866; // Match height of pinned support (height of equilateral triangle)
         
+        // Draw filled square below the beam
+        gc.setFill(Color.WHITE);
         gc.setStroke(UIConstants.SUPPORT_COLOR);
         gc.setLineWidth(UIConstants.SUPPORT_LINE_WIDTH);
         
-        // Draw rectangle
-        gc.strokeRect(x - width/2, y - height/2, width, height);
+        // Draw square centered below the beam with matching height
+        gc.fillRect(x - halfSize, y, size, height);
+        gc.strokeRect(x - halfSize, y, size, height);
         
-        // Draw hatching lines
-        double spacing = UIConstants.SUPPORT_SIZE / 4;
-        for (double i = -height/2 + spacing; i < height/2; i += spacing) {
-            gc.strokeLine(x - width/2, y + i, x + width/2, y + i);
-        }
+        // Draw ground line (wider than the square)
+        double groundLineExtension = size * 0.5;
+        gc.strokeLine(x - size - groundLineExtension, y + height, 
+                     x + size + groundLineExtension, y + height);
+        
+        // Draw position indicator dot at the top center of the square (connection point)
+        double dotRadius = 3.0;
+        gc.setFill(UIConstants.SUPPORT_COLOR);
+        gc.fillOval(x - dotRadius, y - dotRadius, dotRadius * 2, dotRadius * 2);
     }
     
     /**
@@ -403,7 +409,7 @@ public class BeamCanvas extends Canvas {
                 switch (load.getType()) {
                     case DISTRIBUTED:
                         Point2D endPosition = viewTransform.engineeringToScreen(load.getEndPosition(), 0);
-                        drawDistributedLoad(gc, position.getX(), endPosition.getX(), position.getY(), load.getMagnitude());
+                        drawVaryingLoad(gc, position.getX(), endPosition.getX(), position.getY(), load.getMagnitude(), load.getMagnitudeEnd(), load.getType());
                         break;
                     case MOMENT:
                         drawMoment(gc, position.getX(), position.getY(), load.getMagnitude());
@@ -478,16 +484,39 @@ public class BeamCanvas extends Canvas {
      * @param y Y-coordinate (beam centerline)
      * @param magnitude Load magnitude
      */
-    private void drawDistributedLoad(GraphicsContext gc, double x1, double x2, double y, double magnitude) {
+    private void drawVaryingLoad(GraphicsContext gc, double x1, double x2, double y, double startMagnitude, double endMagnitude, Load.Type loadType) {
         double arrowLength = UIConstants.DISTRIBUTED_LOAD_ARROW_LENGTH;
         double arrowHeadSize = UIConstants.DISTRIBUTED_LOAD_ARROW_HEAD_SIZE;
         double spacing = UIConstants.DISTRIBUTED_LOAD_ARROW_SPACING;
         
-        gc.setStroke(UIConstants.DISTRIBUTED_LOAD_COLOR);
+        gc.setStroke(UIConstants.DISTRIBUTED_LOAD_COLOR); // Could use a different color for TRIANGULAR if desired
         gc.setLineWidth(UIConstants.DISTRIBUTED_LOAD_LINE_WIDTH);
+
+        // Determine screen Y coordinates for start and end magnitudes
+        // Assuming positive magnitude means downward load, so subtract from y
+        // Arrow length now represents the visual height of the load representation
+
+        // If both magnitudes are zero, or one is zero and arrowLength is also zero (e.g. from UIConstants)
+        // avoid division by zero and just draw at y.
+        // A more robust way would be to scale based on a 'max expected load magnitude' or similar view property.
+        // For now, let's simplify: if magnitudes are very small or zero, arrowLength might be an issue.
+        // Let's use a fixed arrowLength for now and scale the drawn shape based on magnitude later if needed.
+        // The current arrowLength is from UIConstants.DISTRIBUTED_LOAD_ARROW_LENGTH.
+
+        // Screen Y for the top line of the load shape
+        // Positive magnitudes are typically downwards. Higher magnitude = further from beam (more negative screen Y direction if beam is at y=0 screen).
+        // Let's adjust y_load_top based on magnitude directly. Max arrow length is a visual cap.
+        // A simple approach: map magnitude to a pixel offset. Max magnitude maps to arrowLength.
+        // This needs a reference max magnitude for scaling, or we use a fixed arrowLength for the largest part.
+        // For now, let's use arrowLength as the height for the *larger* of the two magnitudes.
+        double maxAbsMagnitude = Math.max(Math.abs(startMagnitude), Math.abs(endMagnitude));
+        if (maxAbsMagnitude == 0) maxAbsMagnitude = 1; // Avoid division by zero if both are zero
+
+        double y1_top = y + (startMagnitude / maxAbsMagnitude) * arrowLength;
+        double y2_top = y + (endMagnitude / maxAbsMagnitude) * arrowLength;
         
-        // Draw load line
-        gc.strokeLine(x1, y - arrowLength, x2, y - arrowLength);
+        // Draw top line of the load shape
+        gc.strokeLine(x1, y1_top, x2, y2_top);
         
         // Draw arrows
         int numArrows = (int) Math.max(2, Math.floor((x2 - x1) / spacing));
@@ -496,8 +525,13 @@ public class BeamCanvas extends Canvas {
         for (int i = 0; i < numArrows; i++) {
             double x = x1 + i * step;
             
+            // Calculate current interpolated top Y for the arrow
+            double currentFraction = (i == numArrows - 1 && numArrows > 1) ? 1.0 : (double)i / (numArrows - 1); // Ensure last arrow is at x2
+            if (numArrows == 1) currentFraction = 0.5; // Center if only one arrow
+            double current_y_top = y1_top + (y2_top - y1_top) * currentFraction;
+
             // Draw arrow shaft
-            gc.strokeLine(x, y - arrowLength, x, y);
+            gc.strokeLine(x, current_y_top, x, y);
             
             // Draw arrow head
             gc.strokeLine(x, y, x - arrowHeadSize, y - arrowHeadSize);
@@ -505,7 +539,13 @@ public class BeamCanvas extends Canvas {
         }
         
         // Draw magnitude text with white background
-        String text = String.format("%.1f kip/ft", magnitude);
+        String text;
+        if (startMagnitude == endMagnitude) {
+            text = String.format("%.1f kip/ft", startMagnitude);
+        } else {
+            text = String.format("%.1f to %.1f kip/ft", startMagnitude, endMagnitude);
+        }
+        // For pure triangular, one of the magnitudes is zero, this format still works.
         gc.setTextAlign(TextAlignment.CENTER);
         
         // Calculate text bounds
@@ -536,35 +576,49 @@ public class BeamCanvas extends Canvas {
      * @param magnitude Moment magnitude
      */
     private void drawMoment(GraphicsContext gc, double x, double y, double magnitude) {
-        double radius = UIConstants.MOMENT_RADIUS;
-        double arrowHeadSize = UIConstants.MOMENT_ARROW_HEAD_SIZE;
+        double baseRadius = UIConstants.MOMENT_RADIUS * 0.7; // 70% of the original radius
+        double arrowHeadSize = UIConstants.MOMENT_ARROW_HEAD_SIZE * 0.8; // Slightly smaller arrow head
         
         gc.setStroke(UIConstants.MOMENT_COLOR);
         gc.setLineWidth(UIConstants.MOMENT_LINE_WIDTH);
         
+        // Draw position indicator dot at the center of the moment symbol
+        double dotRadius = 3.0;
+        gc.setFill(UIConstants.MOMENT_COLOR);
+        gc.fillOval(x - dotRadius, y - dotRadius, dotRadius * 2, dotRadius * 2);
+        
         // Determine direction based on sign of magnitude
         boolean clockwise = magnitude < 0;
-        double startAngle = clockwise ? 0 : 180;
-        double endAngle = clockwise ? 270 : 270;
+        double arcStartAngle = clockwise ? 30 : 210; // Start at 30° or 210°
+        double arcExtent = 240; // 2/3 of a circle (240°)
         
-        // Draw arc
-        gc.strokeArc(x - radius, y - radius, radius * 2, radius * 2, startAngle, endAngle - startAngle, javafx.scene.shape.ArcType.OPEN);
-        
-        // Draw arrow head
-        double arrowAngle = Math.toRadians(endAngle);
-        double arrowX = x + radius * Math.cos(arrowAngle);
-        double arrowY = y - radius * Math.sin(arrowAngle);
-        
-        double angle1 = arrowAngle + (clockwise ? -Math.PI/4 : Math.PI/4);
-        double angle2 = arrowAngle + (clockwise ? Math.PI/4 : -Math.PI/4);
-        
-        gc.strokeLine(arrowX, arrowY, 
-                      arrowX + arrowHeadSize * Math.cos(angle1), 
-                      arrowY - arrowHeadSize * Math.sin(angle1));
-        gc.strokeLine(arrowX, arrowY, 
-                      arrowX + arrowHeadSize * Math.cos(angle2), 
-                      arrowY - arrowHeadSize * Math.sin(angle2));
-        
+       // Draw arc
+gc.strokeArc(x - baseRadius, y - baseRadius, 
+baseRadius * 2, baseRadius * 2, 
+arcStartAngle, arcExtent, 
+javafx.scene.shape.ArcType.OPEN);
+
+// Calculate arrow head position at the end of the arc
+double endAngle = arcStartAngle + (clockwise ? arcExtent : 0);
+double arrowAngle = Math.toRadians(endAngle);
+double arrowX = x + baseRadius * Math.cos(arrowAngle);
+double arrowY = y - baseRadius * Math.sin(arrowAngle);
+
+// Calculate arrow head points (tangent to the arc)
+double tangentAngle = arrowAngle + (clockwise ? -Math.PI/2 : Math.PI/2);
+double arrowLength = arrowHeadSize * 1.5;
+
+// First arrow line (longer, at 30° from tangent)
+double angle1 = tangentAngle + Math.toRadians(30) * (clockwise ? -1 : 1);
+gc.strokeLine(arrowX, arrowY, 
+  arrowX + arrowLength * Math.cos(angle1), 
+  arrowY - arrowLength * Math.sin(angle1));
+
+// Second arrow line (shorter, at 10° from tangent)
+double angle2 = tangentAngle + Math.toRadians(10) * (clockwise ? -1 : 1);
+gc.strokeLine(arrowX, arrowY, 
+  arrowX + arrowLength * 0.7 * Math.cos(angle2), 
+  arrowY - arrowLength * 0.7 * Math.sin(angle2));
         // Draw magnitude text with white background
         String text = String.format("%.1f kip-ft", Math.abs(magnitude));
         gc.setTextAlign(TextAlignment.LEFT);
@@ -574,7 +628,7 @@ public class BeamCanvas extends Canvas {
         tempText.setFont(gc.getFont());
         double textWidth = tempText.getLayoutBounds().getWidth();
         double textHeight = tempText.getLayoutBounds().getHeight();
-        double textX = x + radius + 5; // Add some padding from the moment symbol
+        double textX = x + baseRadius + 5; // Add some padding from the moment symbol
         double textY = y + textHeight/2; // Vertically center with the moment symbol
         
         // Draw white background rectangle
@@ -613,7 +667,6 @@ public class BeamCanvas extends Canvas {
         double markerLength = 5.0;
         
         // Round to nearest interval for start position
-        double startPos = Math.floor(beamModel.getLength() / interval) * interval;
         
         for (double pos = 0; pos <= beamModel.getLength(); pos += interval) {
             Point2D markerPos = viewTransform.engineeringToScreen(pos, 0);

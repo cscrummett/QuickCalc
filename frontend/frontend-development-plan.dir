@@ -77,16 +77,16 @@
 - [DONE] `constants/UIConstants.java` - Display constants (colors, sizes)
 
 ### Files to Modify:
-- [ ] `BeamModel.java` - Add collections for supports and loads
-- [ ] `BeamCanvas.java` - Add drawing methods for supports and loads
+- [DONE] `BeamModel.java` - Add collections for supports and loads
+- [DONE] `BeamCanvas.java` - Add drawing methods for supports and loads
 
 ### Tasks:
-- [ ] Define Support types (pinned, roller, fixed)
-- [ ] Define Load types (point, UDL, triangular)
-- [ ] Create drawing methods for each support type symbol
-- [ ] Create drawing methods for each load type (arrows, distributed loads)
-- [ ] Add sample supports and loads to BeamModel for testing
-- [ ] Implement proper scaling of symbols based on zoom level
+- [DONE] Define Support types (pinned, roller, fixed)
+- [DONE] Define Load types (point, UDL, triangular)
+- [DONE] Create drawing methods for each support type symbol
+- [DONE] Create drawing methods for each load type (arrows, distributed loads)
+- [DONE] Add sample supports and loads to BeamModel for testing
+- [DONE] Implement proper scaling of symbols based on zoom level
 
 **Success Criteria**: Shows beam with pre-defined supports and loads
 

@@ -1,6 +1,7 @@
 module com.quickcalc {
     requires javafx.controls;
     requires javafx.fxml;
+    requires transitive javafx.graphics;
     // Temporarily commented out for Stage 2 development
     // requires com.fasterxml.jackson.databind;
     
