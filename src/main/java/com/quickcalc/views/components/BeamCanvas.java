@@ -14,6 +14,10 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.Cursor;
 import javafx.scene.text.TextAlignment;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Collections;
+import java.util.Comparator;
 
 /**
  * Canvas component for drawing the beam with its supports and loads
@@ -32,6 +36,11 @@ public class BeamCanvas extends Canvas {
     private double lastMouseX;
     private double lastMouseY;
     private boolean isPanning = false;
+
+    // Interactive elements
+    private List<InteractiveElement> interactiveElements = new ArrayList<>();
+    private InteractiveElement hoveredElement = null;
+    private InteractiveElement selectedElement = null;
     
     /**
      * Constructor
@@ -62,6 +71,7 @@ public class BeamCanvas extends Canvas {
         setupMouseHandlers();
         
         // Initial fit and draw
+        populateInteractiveElements(); // Populate before first draw
         fitViewToBeam();
         draw();
     }
@@ -73,6 +83,8 @@ public class BeamCanvas extends Canvas {
      */
     public void setBeamModel(BeamModel beamModel) {
         this.beamModel = beamModel;
+        populateInteractiveElements(); // Repopulate for new model
+        fitViewToBeam(); // Ensure view is appropriate for the new model
         draw();
     }
     
@@ -83,6 +95,51 @@ public class BeamCanvas extends Canvas {
      */
     public BeamModel getBeamModel() {
         return beamModel;
+    }
+
+    /**
+     * Populate the list of interactive elements from the beam model.
+     */
+    public void populateInteractiveElements() {
+        System.out.println("[BeamCanvas] populateInteractiveElements: Starting");
+        interactiveElements.clear();
+        System.out.println("[BeamCanvas] populateInteractiveElements: Cleared existing elements. Size: " + interactiveElements.size());
+        if (beamModel == null) {
+            return;
+        }
+
+        for (Support support : beamModel.getSupports()) {
+            interactiveElements.add(new SupportMarker(support, beamModel));
+        }
+        System.out.println("[BeamCanvas] populateInteractiveElements: Added supports. Size: " + interactiveElements.size());
+        for (Load load : beamModel.getLoads()) {
+            interactiveElements.add(new LoadMarker(load, beamModel));
+        }
+
+        // Sort elements by priority for selection (higher number = higher priority = checked first by reverse iteration)
+        Collections.sort(interactiveElements, Comparator.comparingInt(this::getElementPriority));
+
+        // Request a redraw as the model (and thus interactive elements) have changed
+        draw();
+        System.out.println("BeamCanvas: Populated " + interactiveElements.size() + " interactive elements. Sorted by priority.");
+    }
+
+    private int getElementPriority(InteractiveElement element) {
+        if (element instanceof LoadMarker) {
+            Load.Type type = ((LoadMarker) element).getLoad().getType();
+            switch (type) {
+                case POINT:
+                case MOMENT:
+                    return 2; // Higher priority for selection
+                case DISTRIBUTED:
+                    return 1; // Lower priority for all distributed loads
+                default:
+                    return 0;
+            }
+        } else if (element instanceof SupportMarker) {
+            return 2; // Higher priority (same as point loads/moments)
+        }
+        return 0; // Default/unknown
     }
     
     /**
@@ -133,13 +190,17 @@ public class BeamCanvas extends Canvas {
      * Set up mouse event handlers for zoom and pan
      */
     private void setupMouseHandlers() {
+        System.out.println("[BeamCanvas] setupMouseHandlers: Setting up mouse event handlers...");
         // Scroll to zoom
         setOnScroll(this::handleScroll);
         
-        // Middle-click and drag to pan
+        // Mouse movement for hover detection
+        setOnMouseMoved(this::handleMouseMoved);
+
+        // Mouse clicks for selection and middle-click for pan/zoom-to-fit trigger
         setOnMousePressed(this::handleMousePressed);
-        setOnMouseDragged(this::handleMouseDragged);
-        setOnMouseReleased(this::handleMouseReleased);
+        setOnMouseDragged(this::handleMouseDragged); // Primarily for panning
+        setOnMouseReleased(this::handleMouseReleased); // Primarily for panning
         
         // Middle-click double-click to zoom-to-fit
         setOnMouseClicked(this::handleMouseClicked);
@@ -148,6 +209,45 @@ public class BeamCanvas extends Canvas {
     /**
      * Handle mouse click events for double-click zoom-to-fit
      */
+    /**
+     * Handle mouse movement for hover effects.
+     */
+    private void handleMouseMoved(MouseEvent event) {
+        System.out.println("MouseMoved: (" + event.getX() + ", " + event.getY() + ")");
+        InteractiveElement currentlyUnderMouse = null;
+        // Iterate in reverse to check top-most elements first
+        for (int i = interactiveElements.size() - 1; i >= 0; i--) {
+            InteractiveElement element = interactiveElements.get(i);
+            if (element.getScreenBounds(viewTransform).contains(event.getX(), event.getY())) {
+                System.out.println("  Element " + interactiveElements.indexOf(element) + " (" + element.getClass().getSimpleName() + ") CONTAINS mouse. Bounds: " + element.getScreenBounds(viewTransform));
+                currentlyUnderMouse = element;
+                break;
+            }
+            else {
+                System.out.println("  Element " + interactiveElements.indexOf(element) + " (" + element.getClass().getSimpleName() + ") does NOT contain mouse. Bounds: " + element.getScreenBounds(viewTransform));
+            }
+        }
+
+        if (hoveredElement != currentlyUnderMouse) {
+            System.out.println("Hover changed. Old: " + (hoveredElement != null ? hoveredElement.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(hoveredElement)) : "null") + 
+                                ", New: " + (currentlyUnderMouse != null ? currentlyUnderMouse.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(currentlyUnderMouse)) : "null"));
+            if (hoveredElement != null) {
+                hoveredElement.setHovered(false);
+            }
+            hoveredElement = currentlyUnderMouse;
+            if (hoveredElement != null) {
+                hoveredElement.setHovered(true);
+                setCursor(Cursor.HAND);
+                System.out.println("Set cursor to HAND for " + hoveredElement.getClass().getSimpleName());
+            } else {
+                setCursor(Cursor.DEFAULT);
+                System.out.println("Set cursor to DEFAULT");
+            }
+            draw(); // Redraw to show/hide highlight
+        }
+        event.consume();
+    }
+
     private void handleMouseClicked(MouseEvent event) {
         if (event.getButton() == javafx.scene.input.MouseButton.MIDDLE) {
             long currentTime = System.currentTimeMillis();
@@ -181,6 +281,28 @@ public class BeamCanvas extends Canvas {
             lastMouseY = event.getY();
             setCursor(Cursor.MOVE);
             event.consume();
+        } else if (event.isPrimaryButtonDown()) {
+            System.out.println("Primary button pressed. Hovered: " + (hoveredElement != null ? hoveredElement.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(hoveredElement)) : "null") + ", Selected: " + (selectedElement != null ? selectedElement.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(selectedElement)) : "null"));
+            if (hoveredElement != null) {
+                // An interactive element is clicked
+                if (selectedElement != null && selectedElement != hoveredElement) {
+                    selectedElement.setSelected(false); // Deselect previous
+                    System.out.println("  Deselected old: " + selectedElement.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(selectedElement)));
+                }
+                selectedElement = hoveredElement;
+                selectedElement.setSelected(true);
+                System.out.println("  Selected new: " + selectedElement.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(selectedElement)));
+                // TODO: Future: If selectedElement is already selected, could initiate editing mode (e.g., show dimension lines)
+            } else {
+                // Clicked on empty space
+                if (selectedElement != null) {
+                    selectedElement.setSelected(false);
+                    System.out.println("  Deselected (clicked empty): " + selectedElement.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(selectedElement)));
+                    selectedElement = null;
+                }
+            }
+            draw(); // Redraw to show selection changes
+            event.consume();
         }
     }
     
@@ -199,6 +321,13 @@ public class BeamCanvas extends Canvas {
             
             draw();
             event.consume();
+        } else if (event.isPrimaryButtonDown()) {
+            // For Stage 4, primary button drag does not move elements directly.
+            // Dimension line interaction will handle changes.
+            // We can consume the event if an element is selected to prevent other drag behaviors.
+            if (selectedElement != null) {
+                event.consume();
+            }
         }
     }
     
@@ -210,6 +339,13 @@ public class BeamCanvas extends Canvas {
             isPanning = false;
             setCursor(Cursor.DEFAULT);
             event.consume();
+        } else if (event.isPrimaryButtonDown()) {
+            // If a selection was made, primary button release doesn't have a specific action yet
+            // for simple selection. Future dimension editing might use this.
+            if (selectedElement != null) {
+                // Potentially finalize an edit operation here in the future
+                event.consume();
+            }
         }
     }
     
@@ -217,6 +353,7 @@ public class BeamCanvas extends Canvas {
      * Draw the beam with its supports and loads
      */
     public void draw() {
+        // System.out.println("[BeamCanvas] draw: Starting draw cycle. Interactive elements count: " + interactiveElements.size());
         GraphicsContext gc = getGraphicsContext2D();
         
         // Clear the canvas
@@ -241,6 +378,13 @@ public class BeamCanvas extends Canvas {
         
         // Draw measurement markers
         drawMeasurementMarkers(gc);
+
+        // Draw highlights for interactive elements
+        // System.out.println("[BeamCanvas] draw: Drawing highlights. Interactive elements count: " + interactiveElements.size());
+        // Iterating directly, as drawHighlight checks isHovered/isSelected internally
+        for (InteractiveElement element : interactiveElements) {
+            element.drawHighlight(gc, viewTransform);
+        }
     }
     
     /**
