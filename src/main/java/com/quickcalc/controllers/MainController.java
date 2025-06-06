@@ -15,7 +15,6 @@ import java.io.File;
 
 import com.quickcalc.models.BeamModel;
 import com.quickcalc.models.Load;
-import com.quickcalc.models.Support;
 import com.quickcalc.views.components.BeamCanvas;
 
 /**
@@ -54,15 +53,8 @@ public class MainController {
         // This will be called when the FXML is loaded
         System.out.println("MainController initialized");
         
-        // Initialize the beam model
-        beamModel = new BeamModel(20.0); // 20-foot beam
-        
-        // Clear default supports
-        beamModel.getSupports().clear();
-        
-        // Add a pinned support at the left end and a fixed support at the right end
-        beamModel.addSupport(new Support(0.0, Support.Type.PINNED));
-        beamModel.addSupport(new Support(beamModel.getLength(), Support.Type.FIXED));
+        // Initialize the beam model (default supports are set in the BeamModel constructor)
+        beamModel = new BeamModel(20.0); // 20-foot beam with default supports
         
         // Add test loads for Stage 3 testing
         beamModel.addLoad(new Load(10.0, -5.0, Load.Type.POINT)); // Point load at 10 ft

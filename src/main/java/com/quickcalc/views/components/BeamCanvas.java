@@ -683,8 +683,10 @@ public class BeamCanvas extends Canvas {
      * @param gc Graphics context
      */
     private void drawSupports(GraphicsContext gc) {
+        System.out.println("Drawing supports:");
         for (Support support : beamModel.getSupports()) {
             Point2D position = viewTransform.engineeringToScreen(support.getPosition(), 0);
+            System.out.println("  Support at " + support.getPosition() + " feet, type: " + support.getType());
             
             switch (support.getType()) {
                 case PINNED:
@@ -728,6 +730,11 @@ public class BeamCanvas extends Canvas {
         double groundLineExtension = size * 0.5;
         gc.strokeLine(x - size - groundLineExtension, y + height, 
                      x + size + groundLineExtension, y + height);
+        
+        // Draw position indicator dot at the top center of the triangle (connection point)
+        double dotRadius = 3.0;
+        gc.setFill(UIConstants.SUPPORT_COLOR);
+        gc.fillOval(x - dotRadius, y - dotRadius, dotRadius * 2, dotRadius * 2);
     }
     
     /**
@@ -739,20 +746,29 @@ public class BeamCanvas extends Canvas {
      */
     private void drawRollerSupport(GraphicsContext gc, double x, double y) {
         double size = UIConstants.SUPPORT_SIZE;
-        double radius = size / 2;
+        double height = size * 0.866; // Match the height of the pinned support (height of equilateral triangle)
+        
+        // Calculate radius to make a perfect circle with the desired height
+        double radius = height / 2; // For a perfect circle, height = 2 * radius
+        double circleSize = radius * 2; // Diameter of the circle
         
         gc.setStroke(UIConstants.SUPPORT_COLOR);
         gc.setLineWidth(UIConstants.SUPPORT_LINE_WIDTH);
         
         // Draw circle (roller) with top edge at the beam
         gc.setFill(Color.WHITE);
-        gc.fillOval(x - radius, y, size, size);
-        gc.strokeOval(x - radius, y, size, size);
+        gc.fillOval(x - radius, y, circleSize, circleSize);
+        gc.strokeOval(x - radius, y, circleSize, circleSize);
         
         // Draw ground line (wider than the circle)
-        double groundLineExtension = size * 0.5;
-        gc.strokeLine(x - size - groundLineExtension, y + size, 
-                     x + size + groundLineExtension, y + size);
+        double groundLineExtension = radius * 0.5;
+        gc.strokeLine(x - radius - groundLineExtension, y + circleSize, 
+                     x + radius + groundLineExtension, y + circleSize);
+        
+        // Draw position indicator dot at the top center of the roller (connection point)
+        double dotRadius = 3.0;
+        gc.setFill(UIConstants.SUPPORT_COLOR);
+        gc.fillOval(x - dotRadius, y - dotRadius, dotRadius * 2, dotRadius * 2);
     }
     
     /**
