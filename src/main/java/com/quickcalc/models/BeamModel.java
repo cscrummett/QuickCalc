@@ -33,8 +33,16 @@ public class BeamModel {
         this.section = "W10x12"; // Default section
         
         // Add default supports at the ends
+        System.out.println("BeamModel: Adding pinned support at 0.0");
         supports.add(new Support(0.0, Support.Type.PINNED));
+        System.out.println("BeamModel: Adding roller support at " + length);
         supports.add(new Support(length, Support.Type.ROLLER));
+        
+        // Debug: Print all supports after adding
+        System.out.println("BeamModel: Current supports:");
+        for (Support s : supports) {
+            System.out.println("  - " + s.getType() + " at " + s.getPosition() + " feet");
+        }
     }
     
     /**

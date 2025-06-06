@@ -19,6 +19,7 @@ import javafx.scene.Cursor;
 import javafx.scene.text.TextAlignment;
 import javafx.geometry.VPos;
 import java.util.TreeSet;
+import javafx.util.Pair;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
@@ -50,7 +51,7 @@ public class BeamCanvas extends Canvas {
     // Constants for Temporary Top Dimension Line (for selected/hovered elements)
     private static final Color TEMP_DIM_LINE_COLOR = Color.ORANGERED;
     private static final double TEMP_DIM_LINE_WIDTH = 0.75;
-    private static final double TEMP_DIM_LINE_OFFSET_Y_SCREEN = -55.0; // Y offset from beam centerline (negative for above)
+    private static final double TEMP_DIM_LINE_OFFSET_Y_SCREEN = -85.0; // Y offset from beam centerline (negative for above)
     private static final double TEMP_DIM_TICK_HEIGHT_SCREEN = 6.0;
     private static final Color TEMP_DIM_TEXT_COLOR = Color.ORANGERED;
     private static final double TEMP_DIM_TEXT_OFFSET_Y_SCREEN = -4.0; // Y offset for text from the dimension line (negative for above)
@@ -455,8 +456,20 @@ public class BeamCanvas extends Canvas {
         // Clear the canvas
         gc.clearRect(0, 0, getWidth(), getHeight());
         
-        // Draw grid
+        // Draw grid first (background)
         drawGrid(gc);
+        
+        // Draw temporary dimensions for selected or hovered element (before beam and other elements)
+        InteractiveElement elementToDimension = null;
+        if (selectedElement != null) {
+            elementToDimension = selectedElement;
+        } else if (hoveredElement != null) {
+            elementToDimension = hoveredElement;
+        }
+
+        if (elementToDimension != null) {
+            drawTemporaryElementDimensions(gc, elementToDimension);
+        }
         
         // Draw the beam centerline
         Point2D start = viewTransform.engineeringToScreen(0, 0);
@@ -473,27 +486,12 @@ public class BeamCanvas extends Canvas {
         drawLoads(gc);
         
         // Draw dimension lines below the beam
-        drawDetailedBottomDimensionLine(gc); // Draw this one first as it's visually above
+        drawDetailedBottomDimensionLine(gc);
         drawPermanentBottomDimensionLine(gc);
-        // Highlight interactive elements dimension line
 
-        // Draw highlights for interactive elements
-        // System.out.println("[BeamCanvas] draw: Drawing highlights. Interactive elements count: " + interactiveElements.size());
-        // Iterating directly, as drawHighlight checks isHovered/isSelected internally
+        // Draw highlights for interactive elements (on top of everything except UI elements)
         for (InteractiveElement element : interactiveElements) {
             element.drawHighlight(gc, viewTransform);
-        }
-
-        // Draw temporary dimensions for selected or hovered element
-        InteractiveElement elementToDimension = null;
-        if (selectedElement != null) {
-            elementToDimension = selectedElement;
-        } else if (hoveredElement != null) {
-            elementToDimension = hoveredElement;
-        }
-
-        if (elementToDimension != null) {
-            drawTemporaryElementDimensions(gc, elementToDimension);
         }
     }
 
@@ -1104,19 +1102,17 @@ gc.strokeLine(arrowX, arrowY,
 
         // Determine all points of interest (tick locations) in engineering coordinates
         TreeSet<Double> tickLocationsEng = new TreeSet<>();
+        
+        // Always include the start (0.0) and end (beam length) of the beam
+        tickLocationsEng.add(0.0);  // Start of beam
+        tickLocationsEng.add(beamModel.getLength());  // End of beam
+        
+        // Add all support positions
         for (Support support : supports) {
             tickLocationsEng.add(support.getPosition());
         }
-
-        // The dimension line effectively starts at the first support.
-        double dimLineOverallStartEngX = supports.get(0).getPosition();
-        // And ends at the maximum of the last support's position or the beam's total length.
-        double lastSupportEngX = supports.get(supports.size() - 1).getPosition();
-        double dimLineOverallEndEngX = Math.max(lastSupportEngX, beamModel.getLength());
-
-        tickLocationsEng.add(dimLineOverallStartEngX); // Ensure first support is a tick
-        tickLocationsEng.add(dimLineOverallEndEngX);   // Ensure effective end is a tick
-
+        
+        // The dimension line spans from 0 to beam length
         List<Double> sortedTickLocationsEng = new ArrayList<>(tickLocationsEng);
 
         if (sortedTickLocationsEng.size() < 2) {
@@ -1198,6 +1194,43 @@ gc.strokeLine(arrowX, arrowY,
         if (beamModel == null) {
             return;
         }
+        
+        // Get the permanent dimension line segments (as start/end pairs)
+        List<Pair<Double, Double>> permanentDimensionSegments = new ArrayList<>();
+        if (beamModel != null && !beamModel.getSupports().isEmpty()) {
+            List<Support> supports = new ArrayList<>(beamModel.getSupports()); // Create a mutable copy
+            supports.sort(Comparator.comparingDouble(Support::getPosition));
+
+            TreeSet<Double> permTickLocationsEngSet = new TreeSet<>();
+            for (Support support : supports) {
+                permTickLocationsEngSet.add(support.getPosition());
+            }
+
+            // The permanent dimension line effectively starts at the first support
+            // and ends at the maximum of the last support's position or the beam's total length.
+            if (!supports.isEmpty()) { // Ensure there are supports before accessing them
+                double permDimLineOverallStartEngX = supports.get(0).getPosition();
+                double permLastSupportEngX = supports.get(supports.size() - 1).getPosition();
+                double permDimLineOverallEndEngX = Math.max(permLastSupportEngX, beamModel.getLength());
+
+                permTickLocationsEngSet.add(permDimLineOverallStartEngX); // Ensure first support is a tick
+                permTickLocationsEngSet.add(permDimLineOverallEndEngX);   // Ensure effective end is a tick
+            }
+
+            List<Double> sortedPermTickLocationsEng = new ArrayList<>(permTickLocationsEngSet);
+
+            if (sortedPermTickLocationsEng.size() >= 2) {
+                for (int k = 0; k < sortedPermTickLocationsEng.size() - 1; k++) {
+                    double segStart = sortedPermTickLocationsEng.get(k);
+                    double segEnd = sortedPermTickLocationsEng.get(k + 1);
+                    double segLength = segEnd - segStart;
+
+                    if (segLength > 1e-2) { // Only add significant segments
+                         permanentDimensionSegments.add(new Pair<>(segStart, segEnd));
+                    }
+                }
+            }
+        }
 
         TreeSet<Double> tickLocationsEng = new TreeSet<>();
 
@@ -1233,53 +1266,83 @@ gc.strokeLine(arrowX, arrowY,
         double beamScreenCenterY = viewTransform.engineeringToScreen(0, 0).getY();
         double dimLineScreenY = beamScreenCenterY + DETAILED_DIM_LINE_OFFSET_Y_SCREEN;
 
-        // Draw main horizontal dimension line
-        Point2D overallDimStartScreen = viewTransform.engineeringToScreen(sortedTickLocationsEng.get(0), 0);
-        Point2D overallDimEndScreen = viewTransform.engineeringToScreen(sortedTickLocationsEng.get(sortedTickLocationsEng.size() - 1), 0);
-        gc.strokeLine(overallDimStartScreen.getX(), dimLineScreenY, overallDimEndScreen.getX(), dimLineScreenY);
+        // The main horizontal dimension line is now drawn per segment below, not as one continuous line.
 
-        // Draw ticks and segment labels
-        for (int i = 0; i < sortedTickLocationsEng.size(); i++) {
+        // First pass: Collect all the segments that should be drawn
+        List<Double> segmentStarts = new ArrayList<>();
+        List<Double> segmentEnds = new ArrayList<>();
+        List<Double> segmentLengths = new ArrayList<>();
+        
+        for (int i = 0; i < sortedTickLocationsEng.size() - 1; i++) {
             double currentTickEngX = sortedTickLocationsEng.get(i);
+            double nextTickEngX = sortedTickLocationsEng.get(i + 1);
+            double segmentLengthEng = nextTickEngX - currentTickEngX;
+            
+            // Only consider significant segments
             Point2D currentTickScreen = viewTransform.engineeringToScreen(currentTickEngX, 0);
-
-            // Draw vertical tick
-            gc.strokeLine(currentTickScreen.getX(), dimLineScreenY - DETAILED_DIM_TICK_HEIGHT_SCREEN / 2,
-                          currentTickScreen.getX(), dimLineScreenY + DETAILED_DIM_TICK_HEIGHT_SCREEN / 2);
-
-            // If there's a next tick, draw the segment label between current and next
-            if (i < sortedTickLocationsEng.size() - 1) {
-                double nextTickEngX = sortedTickLocationsEng.get(i + 1);
-                double segmentLengthEng = nextTickEngX - currentTickEngX;
-
-                // Only label significant segments
-                Point2D nextTickScreen = viewTransform.engineeringToScreen(nextTickEngX, 0);
-                double segmentScreenWidth = Math.abs(nextTickScreen.getX() - currentTickScreen.getX());
-
-                if (segmentLengthEng > 1e-2 && segmentScreenWidth > 10) { // Avoid tiny segments or overlapping text
-                    double segmentMidScreenX = (currentTickScreen.getX() + nextTickScreen.getX()) / 2;
-                    
-                    String text = String.format("%.2f'", segmentLengthEng);
-                    
-                    javafx.scene.text.Text tempTextNode = new javafx.scene.text.Text(text);
-                    tempTextNode.setFont(gc.getFont());
-                    double textWidth = tempTextNode.getLayoutBounds().getWidth();
-                    double textHeight = tempTextNode.getLayoutBounds().getHeight();
-
-                    double textBaselineScreenY = dimLineScreenY - DETAILED_DIM_TEXT_OFFSET_Y_SCREEN;
-
-                    gc.setFill(Color.WHITE);
-                    gc.fillRect(segmentMidScreenX - textWidth / 2 - DETAILED_DIM_TEXT_BG_PADDING_SCREEN,
-                                textBaselineScreenY - textHeight - DETAILED_DIM_TEXT_BG_PADDING_SCREEN,
-                                textWidth + 2 * DETAILED_DIM_TEXT_BG_PADDING_SCREEN,
-                                textHeight + 2 * DETAILED_DIM_TEXT_BG_PADDING_SCREEN);
-                    
-                    gc.setFill(DETAILED_DIM_TEXT_COLOR);
-                    gc.setTextAlign(TextAlignment.CENTER);
-                    gc.setTextBaseline(VPos.BOTTOM);
-                    gc.fillText(text, segmentMidScreenX, textBaselineScreenY);
+            Point2D nextTickScreen = viewTransform.engineeringToScreen(nextTickEngX, 0);
+            double segmentScreenWidth = Math.abs(nextTickScreen.getX() - currentTickScreen.getX());
+            
+            if (segmentLengthEng > 1e-2 && segmentScreenWidth > 10) {
+                // Check if this exact segment (by start and end points) is in the permanent dimension line
+                boolean isDuplicate = false;
+                for (Pair<Double, Double> permSegmentPair : permanentDimensionSegments) {
+                    if (Math.abs(permSegmentPair.getKey() - currentTickEngX) < 0.01 &&
+                        Math.abs(permSegmentPair.getValue() - nextTickEngX) < 0.01) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                
+                // Only add non-duplicate segments
+                if (!isDuplicate) {
+                    segmentStarts.add(currentTickEngX);
+                    segmentEnds.add(nextTickEngX);
+                    segmentLengths.add(segmentLengthEng);
                 }
             }
+        }
+        
+        // Second pass: Draw the dimension line and ticks only for non-duplicate segments
+        for (int i = 0; i < segmentStarts.size(); i++) {
+            double startEngX = segmentStarts.get(i);
+            double endEngX = segmentEnds.get(i);
+            double segmentLengthEng = segmentLengths.get(i);
+            
+            Point2D startScreen = viewTransform.engineeringToScreen(startEngX, 0);
+            Point2D endScreen = viewTransform.engineeringToScreen(endEngX, 0);
+            
+            // Draw the horizontal dimension line segment
+            gc.strokeLine(startScreen.getX(), dimLineScreenY, endScreen.getX(), dimLineScreenY);
+            
+            // Draw vertical ticks at both ends
+            gc.strokeLine(startScreen.getX(), dimLineScreenY - DETAILED_DIM_TICK_HEIGHT_SCREEN / 2,
+                          startScreen.getX(), dimLineScreenY + DETAILED_DIM_TICK_HEIGHT_SCREEN / 2);
+            gc.strokeLine(endScreen.getX(), dimLineScreenY - DETAILED_DIM_TICK_HEIGHT_SCREEN / 2,
+                          endScreen.getX(), dimLineScreenY + DETAILED_DIM_TICK_HEIGHT_SCREEN / 2);
+            
+            // Draw the dimension text
+            double segmentMidScreenX = (startScreen.getX() + endScreen.getX()) / 2;
+            String text = String.format("%.2f'", segmentLengthEng);
+            
+            javafx.scene.text.Text tempTextNode = new javafx.scene.text.Text(text);
+            tempTextNode.setFont(gc.getFont());
+            double textWidth = tempTextNode.getLayoutBounds().getWidth();
+            double textHeight = tempTextNode.getLayoutBounds().getHeight();
+            double textBaselineScreenY = dimLineScreenY - DETAILED_DIM_TEXT_OFFSET_Y_SCREEN;
+            
+            // Draw white background for text
+            gc.setFill(Color.WHITE);
+            gc.fillRect(segmentMidScreenX - textWidth / 2 - DETAILED_DIM_TEXT_BG_PADDING_SCREEN,
+                        textBaselineScreenY - textHeight - DETAILED_DIM_TEXT_BG_PADDING_SCREEN,
+                        textWidth + 2 * DETAILED_DIM_TEXT_BG_PADDING_SCREEN,
+                        textHeight + 2 * DETAILED_DIM_TEXT_BG_PADDING_SCREEN);
+            
+            // Draw the text
+            gc.setFill(DETAILED_DIM_TEXT_COLOR);
+            gc.setTextAlign(TextAlignment.CENTER);
+            gc.setTextBaseline(VPos.BOTTOM);
+            gc.fillText(text, segmentMidScreenX, textBaselineScreenY);
         }
     }
 }

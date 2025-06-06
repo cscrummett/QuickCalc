@@ -15,6 +15,7 @@ import java.io.File;
 
 import com.quickcalc.models.BeamModel;
 import com.quickcalc.models.Load;
+import com.quickcalc.models.Support;
 import com.quickcalc.views.components.BeamCanvas;
 
 /**
@@ -53,13 +54,27 @@ public class MainController {
         // This will be called when the FXML is loaded
         System.out.println("MainController initialized");
         
-        // Initialize the beam model (default supports are set in the BeamModel constructor)
-        beamModel = new BeamModel(20.0); // 20-foot beam with default supports
+        // Initialize the beam model with total length of 50 feet (10' cantilever + 10' + 15' + 15' cantilever)
+        beamModel = new BeamModel(50.0);
         
-        // Add test loads for Stage 3 testing
-        beamModel.addLoad(new Load(10.0, -5.0, Load.Type.POINT)); // Point load at 10 ft
-        beamModel.addLoad(new Load(5.0, 15.0, -2.0)); // Distributed load from 5-15 ft
-        beamModel.addLoad(new Load(15.0, 10.0, Load.Type.MOMENT)); // Moment at 15 ft
+        // Clear default supports and set up our three supports (pinned - roller - roller)
+        beamModel.getSupports().clear();
+        beamModel.addSupport(new Support(10.0, Support.Type.PINNED));  // Pinned at 10' (start of main span)
+        beamModel.addSupport(new Support(30.0, Support.Type.ROLLER));  // Roller at 30'
+        beamModel.addSupport(new Support(45.0, Support.Type.ROLLER)); // Roller at 45'
+        
+        // Add point load 5' from the left end (5' from 0' = position 5.0)
+        beamModel.addLoad(new Load(5.0, -8.0, Load.Type.POINT));   // 8 kips down at 5' (on cantilever)
+        
+        // Add two point loads on the main left span (10'-30')
+        beamModel.addLoad(new Load(18.0, -10.0, Load.Type.POINT));   // 10 kips down at 18'
+        beamModel.addLoad(new Load(25.0, -7.5, Load.Type.POINT));   // 7.5 kips down at 25'
+        
+        // Add distributed load on the right span (30'-45')
+        beamModel.addLoad(new Load(30.0, 45.0, -1.5));  // 1.5 kip/ft distributed load
+        
+        // Add moment at the end (50')
+        beamModel.addLoad(new Load(50.0, 25.0, Load.Type.MOMENT));  // 25 kip-ft moment at 50'
         
         // Create and add the beam canvas to the container
         beamCanvas = new BeamCanvas(beamCanvasContainer.getWidth(), beamCanvasContainer.getHeight());
