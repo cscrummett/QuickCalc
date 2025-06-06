@@ -75,4 +75,7 @@ public class UIConstants {
     public static final double UDL_MIN_LENGTH_FT = 0.5; // Minimum length for a UDL in feet
 
     public static final double ENGINEERING_SNAP_INCREMENT_FT = 0.1; // Snap increment in feet for precise placement
+
+    // Line Styles
+    public static final double[] DASHED_LINE_PATTERN = {5.0, 5.0}; // 5px dash, 5px gap
 }

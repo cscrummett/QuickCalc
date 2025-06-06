@@ -47,6 +47,15 @@ public class BeamCanvas extends Canvas {
     private static final double DETAILED_DIM_TEXT_OFFSET_Y_SCREEN = 4.0;
     private static final double DETAILED_DIM_TEXT_BG_PADDING_SCREEN = 1.0;
 
+    // Constants for Temporary Top Dimension Line (for selected/hovered elements)
+    private static final Color TEMP_DIM_LINE_COLOR = Color.ORANGERED;
+    private static final double TEMP_DIM_LINE_WIDTH = 0.75;
+    private static final double TEMP_DIM_LINE_OFFSET_Y_SCREEN = -55.0; // Y offset from beam centerline (negative for above)
+    private static final double TEMP_DIM_TICK_HEIGHT_SCREEN = 6.0;
+    private static final Color TEMP_DIM_TEXT_COLOR = Color.ORANGERED;
+    private static final double TEMP_DIM_TEXT_OFFSET_Y_SCREEN = -4.0; // Y offset for text from the dimension line (negative for above)
+    private static final double TEMP_DIM_TEXT_BG_PADDING_SCREEN = 1.0;
+
     private BeamModel beamModel;
     private ViewTransform viewTransform;
     private double paddingX = UIConstants.CANVAS_PADDING_X; // Horizontal padding in pixels
@@ -463,8 +472,7 @@ public class BeamCanvas extends Canvas {
         // Draw loads
         drawLoads(gc);
         
-        // Draw measurement markers
-        drawMeasurementMarkers(gc);
+        // Draw dimension lines below the beam
         drawDetailedBottomDimensionLine(gc); // Draw this one first as it's visually above
         drawPermanentBottomDimensionLine(gc);
         // Highlight interactive elements dimension line
@@ -475,7 +483,157 @@ public class BeamCanvas extends Canvas {
         for (InteractiveElement element : interactiveElements) {
             element.drawHighlight(gc, viewTransform);
         }
+
+        // Draw temporary dimensions for selected or hovered element
+        InteractiveElement elementToDimension = null;
+        if (selectedElement != null) {
+            elementToDimension = selectedElement;
+        } else if (hoveredElement != null) {
+            elementToDimension = hoveredElement;
+        }
+
+        if (elementToDimension != null) {
+            drawTemporaryElementDimensions(gc, elementToDimension);
+        }
     }
+
+    /**
+     * Draw temporary dimension lines above the beam for a selected or hovered element.
+     *
+     * @param gc Graphics context
+     * @param element The interactive element to dimension
+     */
+    private void drawTemporaryElementDimensions(GraphicsContext gc, InteractiveElement element) {
+        if (beamModel == null || element == null || viewTransform == null) {
+            return;
+        }
+
+        Object modelElement = element.getModelElement();
+        List<Double> elementKeyEngXs = new ArrayList<>(); // Stores start and end X for the element itself
+
+        if (modelElement instanceof Load) {
+            Load load = (Load) modelElement;
+            elementKeyEngXs.add(load.getPosition());
+            if (load.getType() == Load.Type.DISTRIBUTED) {
+                elementKeyEngXs.add(load.getEndPosition());
+            }
+        } else if (modelElement instanceof Support) {
+            Support support = (Support) modelElement;
+            elementKeyEngXs.add(support.getPosition());
+        } else {
+            return; // Unknown element type
+        }
+        Collections.sort(elementKeyEngXs); // Ensure start X is first for distributed loads
+        if (elementKeyEngXs.isEmpty()) return;
+
+        double elementEngX1 = elementKeyEngXs.get(0);
+        double elementEngX2 = (elementKeyEngXs.size() > 1) ? elementKeyEngXs.get(1) : elementEngX1;
+
+        // Determine anchor points (supports or beam edges)
+        TreeSet<Double> boundaryPointsEng = new TreeSet<>();
+        boundaryPointsEng.add(0.0); // Beam start
+        beamModel.getSupports().forEach(s -> boundaryPointsEng.add(s.getPosition()));
+        boundaryPointsEng.add(beamModel.getLength()); // Beam end
+
+        Double foundLeftAnchor = boundaryPointsEng.lower(elementEngX1);
+        double leftAnchorEngX = (foundLeftAnchor != null) ? foundLeftAnchor : 0.0;
+        // If elementEngX1 is a boundary point itself, lower() gives the one before it.
+        // If elementEngX1 is 0.0, lower() is null, leftAnchorEngX becomes 0.0.
+
+        Double foundRightAnchor = boundaryPointsEng.higher(elementEngX2);
+        double rightAnchorEngX = (foundRightAnchor != null) ? foundRightAnchor : beamModel.getLength();
+        // If elementEngX2 is a boundary point, higher() gives one after it.
+        // If elementEngX2 is beamModel.getLength(), higher() is null, rightAnchorEngX becomes beamModel.getLength().
+        
+        gc.setStroke(TEMP_DIM_LINE_COLOR);
+        gc.setLineWidth(TEMP_DIM_LINE_WIDTH);
+        gc.setFill(TEMP_DIM_TEXT_COLOR);
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.setLineDashes(UIConstants.DASHED_LINE_PATTERN);
+
+        double beamScreenCenterY = viewTransform.engineeringToScreen(0, 0).getY();
+        double dimLineScreenY = beamScreenCenterY + TEMP_DIM_LINE_OFFSET_Y_SCREEN;
+
+        // Segment 1: Left Anchor to Element Start (elementEngX1)
+        if (elementEngX1 > leftAnchorEngX + 1e-3) { // Add tolerance, draw if segment has length
+            drawSingleDimensionSegment(gc, leftAnchorEngX, elementEngX1, dimLineScreenY, beamScreenCenterY);
+        }
+
+        // Segment 2: Element's own length (for Distributed Loads)
+        boolean isDistributedLoad = modelElement instanceof Load && ((Load) modelElement).getType() == Load.Type.DISTRIBUTED;
+        if (isDistributedLoad && elementEngX2 > elementEngX1 + 1e-3) {
+            drawSingleDimensionSegment(gc, elementEngX1, elementEngX2, dimLineScreenY, beamScreenCenterY);
+        }
+
+        // Segment 3: Element End (elementEngX2) to Right Anchor
+        if (rightAnchorEngX > elementEngX2 + 1e-3) {
+            drawSingleDimensionSegment(gc, elementEngX2, rightAnchorEngX, dimLineScreenY, beamScreenCenterY);
+        }
+        
+        gc.setLineDashes(null); // Reset dashes
+    }
+
+    /**
+     * Helper method to draw a single dimension segment with ticks, extension lines, and text.
+     */
+    private void drawSingleDimensionSegment(GraphicsContext gc, double engXStart, double engXEnd, 
+                                            double dimLineScreenY, double beamScreenCenterY) {
+        
+        Point2D segStartScreen = viewTransform.engineeringToScreen(engXStart, 0);
+        Point2D segEndScreen = viewTransform.engineeringToScreen(engXEnd, 0);
+        double segmentLengthEng = engXEnd - engXStart;
+
+        // Do not draw if segment is too small in engineering units or screen units
+        if (segmentLengthEng < 1e-3 || Math.abs(segEndScreen.getX() - segStartScreen.getX()) < 1.0) {
+            return;
+        }
+
+        // Main horizontal dimension line
+        gc.strokeLine(segStartScreen.getX(), dimLineScreenY, segEndScreen.getX(), dimLineScreenY);
+
+        // Extension line from segment start upwards to dimension line
+        gc.strokeLine(segStartScreen.getX(), beamScreenCenterY, segStartScreen.getX(), dimLineScreenY - TEMP_DIM_TICK_HEIGHT_SCREEN / 2);
+        // Tick at segment start on dimension line
+        gc.strokeLine(segStartScreen.getX(), dimLineScreenY - TEMP_DIM_TICK_HEIGHT_SCREEN / 2, segStartScreen.getX(), dimLineScreenY + TEMP_DIM_TICK_HEIGHT_SCREEN / 2);
+
+        // Extension line from segment end upwards to dimension line
+        gc.strokeLine(segEndScreen.getX(), beamScreenCenterY, segEndScreen.getX(), dimLineScreenY - TEMP_DIM_TICK_HEIGHT_SCREEN / 2);
+        // Tick at segment end on dimension line
+        gc.strokeLine(segEndScreen.getX(), dimLineScreenY - TEMP_DIM_TICK_HEIGHT_SCREEN / 2, segEndScreen.getX(), dimLineScreenY + TEMP_DIM_TICK_HEIGHT_SCREEN / 2);
+
+        // Dimension text for the segment
+        drawDimensionText(gc, segStartScreen.getX(), segEndScreen.getX(), dimLineScreenY, segmentLengthEng, TEMP_DIM_TEXT_OFFSET_Y_SCREEN, TEMP_DIM_TEXT_BG_PADDING_SCREEN);
+    }
+
+
+    // Helper method to draw dimension text (extracted from existing dimension line methods, can be generalized)
+    private void drawDimensionText(GraphicsContext gc, double segmentStartScreenX, double segmentEndScreenX, double dimLineScreenY, double segmentLengthEng, double textOffsetY, double bgPadding) {
+        String text = String.format("%.2f'", segmentLengthEng);
+        javafx.scene.text.Text tempTextNode = new javafx.scene.text.Text(text);
+        tempTextNode.setFont(gc.getFont());
+        double textWidth = tempTextNode.getLayoutBounds().getWidth();
+        double textHeight = tempTextNode.getLayoutBounds().getHeight(); // Ascent for Y positioning
+
+        double segmentMidScreenX = (segmentStartScreenX + segmentEndScreenX) / 2;
+        double textBaselineScreenY = dimLineScreenY + textOffsetY; // Adjusted for above/below via textOffsetY
+
+        // Ensure text is not drawn if segment is too small on screen
+        if (Math.abs(segmentEndScreenX - segmentStartScreenX) < textWidth + 2 * bgPadding) {
+            return;
+        }
+
+        gc.setFill(Color.WHITE); // Background for text
+        gc.fillRect(segmentMidScreenX - textWidth / 2 - bgPadding,
+                    textBaselineScreenY - textHeight - bgPadding, // textHeight is approx ascent, adjust for full bg box
+                    textWidth + 2 * bgPadding,
+                    tempTextNode.getLayoutBounds().getHeight() + 2 * bgPadding);
+        
+        gc.setFill(TEMP_DIM_TEXT_COLOR); // Text color
+        gc.setTextBaseline(VPos.BOTTOM); // Align text baseline correctly for the Y coord
+        gc.fillText(text, segmentMidScreenX, textBaselineScreenY);
+    }
+
+
     
     /**
      * Draw the background grid
