@@ -54,8 +54,8 @@ public class LoadMarker extends InteractiveElement {
             }
             return new BoundingBox(Math.min(screenX, endX), distMinY, Math.abs(endX - screenX), distVisualHeight);
         } else if (load.getType() == Load.Type.MOMENT) {
-            double markerRadius = UIConstants.MOMENT_MARKER_RADIUS_PX;
-            return new BoundingBox(screenX - markerRadius, screenYBase - markerRadius, 2 * markerRadius, 2 * markerRadius);
+            double visualRadius = UIConstants.MOMENT_RADIUS * 0.7; // Match the visual radius used in drawMoment
+            return new BoundingBox(screenX - visualRadius, screenYBase - visualRadius, 2 * visualRadius, 2 * visualRadius);
         }
         return new BoundingBox(screenX - defaultWidth / 2, screenYBase - defaultHeight / 2, defaultWidth, defaultHeight);
     }

@@ -4,6 +4,10 @@ import com.quickcalc.constants.UIConstants;
 import com.quickcalc.models.BeamModel;
 import com.quickcalc.models.Load;
 import com.quickcalc.models.Support;
+import com.quickcalc.views.components.ClickableDimensionText;
+import javafx.scene.control.TextInputDialog;
+import java.util.Optional;
+import javafx.geometry.BoundingBox;
 import com.quickcalc.utils.Point2D;
 import com.quickcalc.utils.ViewTransform;
 
@@ -30,33 +34,6 @@ import java.util.Comparator;
  */
 public class BeamCanvas extends Canvas {
     
-    // Constants for Permanent Bottom Dimension Line (Supports and Beam Ends)
-    private static final Color PERMANENT_DIM_LINE_COLOR = Color.DARKCYAN;
-    private static final double PERMANENT_DIM_LINE_WIDTH = 1.0;
-    private static final double PERMANENT_DIM_LINE_OFFSET_Y_SCREEN = 85.0; // Y offset from beam centerline in screen coords (dropped lower)
-    private static final double PERMANENT_DIM_TICK_HEIGHT_SCREEN = 8.0;
-    private static final Color PERMANENT_DIM_TEXT_COLOR = Color.DARKCYAN;
-    private static final double PERMANENT_DIM_TEXT_OFFSET_Y_SCREEN = 5.0; // Y offset for text from the dimension line
-    private static final double PERMANENT_DIM_TEXT_BG_PADDING_SCREEN = 2.0;
-
-    // Constants for Detailed Bottom Dimension Line (All Points of Interest)
-    private static final Color DETAILED_DIM_LINE_COLOR = Color.BLUEVIOLET;
-    private static final double DETAILED_DIM_LINE_WIDTH = 0.75;
-    private static final double DETAILED_DIM_LINE_OFFSET_Y_SCREEN = 55.0; 
-    private static final double DETAILED_DIM_TICK_HEIGHT_SCREEN = 6.0;
-    private static final Color DETAILED_DIM_TEXT_COLOR = Color.BLUEVIOLET;
-    private static final double DETAILED_DIM_TEXT_OFFSET_Y_SCREEN = 4.0;
-    private static final double DETAILED_DIM_TEXT_BG_PADDING_SCREEN = 1.0;
-
-    // Constants for Temporary Top Dimension Line (for selected/hovered elements)
-    private static final Color TEMP_DIM_LINE_COLOR = Color.ORANGERED;
-    private static final double TEMP_DIM_LINE_WIDTH = 0.75;
-    private static final double TEMP_DIM_LINE_OFFSET_Y_SCREEN = -85.0; // Y offset from beam centerline (negative for above)
-    private static final double TEMP_DIM_TICK_HEIGHT_SCREEN = 6.0;
-    private static final Color TEMP_DIM_TEXT_COLOR = Color.ORANGERED;
-    private static final double TEMP_DIM_TEXT_OFFSET_Y_SCREEN = -4.0; // Y offset for text from the dimension line (negative for above)
-    private static final double TEMP_DIM_TEXT_BG_PADDING_SCREEN = 1.0;
-
     private BeamModel beamModel;
     private ViewTransform viewTransform;
     private double paddingX = UIConstants.CANVAS_PADDING_X; // Horizontal padding in pixels
@@ -74,6 +51,8 @@ public class BeamCanvas extends Canvas {
     private List<InteractiveElement> interactiveElements = new ArrayList<>();
     private InteractiveElement hoveredElement = null;
     private InteractiveElement selectedElement = null;
+    private List<ClickableDimensionText> clickableDimensionTexts = new ArrayList<>();
+    private DimensionLineDrawer dimensionLineDrawer;
     
     /**
      * Constructor
@@ -89,6 +68,9 @@ public class BeamCanvas extends Canvas {
         
         // Create the view transform
         this.viewTransform = new ViewTransform();
+
+        // Initialize the dimension line drawer
+        this.dimensionLineDrawer = new DimensionLineDrawer(this.viewTransform, this.beamModel, this.clickableDimensionTexts);
         
         // Make the canvas resizable
         widthProperty().addListener((obs, oldVal, newVal) -> {
@@ -134,6 +116,8 @@ public class BeamCanvas extends Canvas {
      */
     public void setBeamModel(BeamModel beamModel) {
         this.beamModel = beamModel;
+        // Update the beam model in the dimension line drawer as well
+        this.dimensionLineDrawer = new DimensionLineDrawer(this.viewTransform, this.beamModel, this.clickableDimensionTexts);
         populateInteractiveElements(); // Repopulate for new model
         fitViewToBeam(); // Ensure view is appropriate for the new model
         draw();
@@ -153,7 +137,8 @@ public class BeamCanvas extends Canvas {
      */
     public void populateInteractiveElements() {
         System.out.println("[BeamCanvas] populateInteractiveElements: Starting");
-        interactiveElements.clear();
+        this.clickableDimensionTexts.clear(); // Clear dimension texts for the new draw cycle
+    interactiveElements.clear();
         System.out.println("[BeamCanvas] populateInteractiveElements: Cleared existing elements. Size: " + interactiveElements.size());
         if (beamModel == null) {
             return;
@@ -451,6 +436,7 @@ public class BeamCanvas extends Canvas {
      */
     public void draw() {
         // System.out.println("[BeamCanvas] draw: Starting draw cycle. Interactive elements count: " + interactiveElements.size());
+        clickableDimensionTexts.clear();
         GraphicsContext gc = getGraphicsContext2D();
         
         // Clear the canvas
@@ -468,7 +454,7 @@ public class BeamCanvas extends Canvas {
         }
 
         if (elementToDimension != null) {
-            drawTemporaryElementDimensions(gc, elementToDimension);
+            dimensionLineDrawer.drawTemporaryElementDimensions(gc, elementToDimension);
         }
         
         // Draw the beam centerline
@@ -486,8 +472,8 @@ public class BeamCanvas extends Canvas {
         drawLoads(gc);
         
         // Draw dimension lines below the beam
-        drawDetailedBottomDimensionLine(gc);
-        drawPermanentBottomDimensionLine(gc);
+        dimensionLineDrawer.drawDetailedBottomDimensionLine(gc);
+        dimensionLineDrawer.drawPermanentBottomDimensionLine(gc);
 
         // Draw highlights for interactive elements (on top of everything except UI elements)
         for (InteractiveElement element : interactiveElements) {
@@ -495,144 +481,6 @@ public class BeamCanvas extends Canvas {
         }
     }
 
-    /**
-     * Draw temporary dimension lines above the beam for a selected or hovered element.
-     *
-     * @param gc Graphics context
-     * @param element The interactive element to dimension
-     */
-    private void drawTemporaryElementDimensions(GraphicsContext gc, InteractiveElement element) {
-        if (beamModel == null || element == null || viewTransform == null) {
-            return;
-        }
-
-        Object modelElement = element.getModelElement();
-        List<Double> elementKeyEngXs = new ArrayList<>(); // Stores start and end X for the element itself
-
-        if (modelElement instanceof Load) {
-            Load load = (Load) modelElement;
-            elementKeyEngXs.add(load.getPosition());
-            if (load.getType() == Load.Type.DISTRIBUTED) {
-                elementKeyEngXs.add(load.getEndPosition());
-            }
-        } else if (modelElement instanceof Support) {
-            Support support = (Support) modelElement;
-            elementKeyEngXs.add(support.getPosition());
-        } else {
-            return; // Unknown element type
-        }
-        Collections.sort(elementKeyEngXs); // Ensure start X is first for distributed loads
-        if (elementKeyEngXs.isEmpty()) return;
-
-        double elementEngX1 = elementKeyEngXs.get(0);
-        double elementEngX2 = (elementKeyEngXs.size() > 1) ? elementKeyEngXs.get(1) : elementEngX1;
-
-        // Determine anchor points (supports or beam edges)
-        TreeSet<Double> boundaryPointsEng = new TreeSet<>();
-        boundaryPointsEng.add(0.0); // Beam start
-        beamModel.getSupports().forEach(s -> boundaryPointsEng.add(s.getPosition()));
-        boundaryPointsEng.add(beamModel.getLength()); // Beam end
-
-        Double foundLeftAnchor = boundaryPointsEng.lower(elementEngX1);
-        double leftAnchorEngX = (foundLeftAnchor != null) ? foundLeftAnchor : 0.0;
-        // If elementEngX1 is a boundary point itself, lower() gives the one before it.
-        // If elementEngX1 is 0.0, lower() is null, leftAnchorEngX becomes 0.0.
-
-        Double foundRightAnchor = boundaryPointsEng.higher(elementEngX2);
-        double rightAnchorEngX = (foundRightAnchor != null) ? foundRightAnchor : beamModel.getLength();
-        // If elementEngX2 is a boundary point, higher() gives one after it.
-        // If elementEngX2 is beamModel.getLength(), higher() is null, rightAnchorEngX becomes beamModel.getLength().
-        
-        gc.setStroke(TEMP_DIM_LINE_COLOR);
-        gc.setLineWidth(TEMP_DIM_LINE_WIDTH);
-        gc.setFill(TEMP_DIM_TEXT_COLOR);
-        gc.setTextAlign(TextAlignment.CENTER);
-        gc.setLineDashes(UIConstants.DASHED_LINE_PATTERN);
-
-        double beamScreenCenterY = viewTransform.engineeringToScreen(0, 0).getY();
-        double dimLineScreenY = beamScreenCenterY + TEMP_DIM_LINE_OFFSET_Y_SCREEN;
-
-        // Segment 1: Left Anchor to Element Start (elementEngX1)
-        if (elementEngX1 > leftAnchorEngX + 1e-3) { // Add tolerance, draw if segment has length
-            drawSingleDimensionSegment(gc, leftAnchorEngX, elementEngX1, dimLineScreenY, beamScreenCenterY);
-        }
-
-        // Segment 2: Element's own length (for Distributed Loads)
-        boolean isDistributedLoad = modelElement instanceof Load && ((Load) modelElement).getType() == Load.Type.DISTRIBUTED;
-        if (isDistributedLoad && elementEngX2 > elementEngX1 + 1e-3) {
-            drawSingleDimensionSegment(gc, elementEngX1, elementEngX2, dimLineScreenY, beamScreenCenterY);
-        }
-
-        // Segment 3: Element End (elementEngX2) to Right Anchor
-        if (rightAnchorEngX > elementEngX2 + 1e-3) {
-            drawSingleDimensionSegment(gc, elementEngX2, rightAnchorEngX, dimLineScreenY, beamScreenCenterY);
-        }
-        
-        gc.setLineDashes(null); // Reset dashes
-    }
-
-    /**
-     * Helper method to draw a single dimension segment with ticks, extension lines, and text.
-     */
-    private void drawSingleDimensionSegment(GraphicsContext gc, double engXStart, double engXEnd, 
-                                            double dimLineScreenY, double beamScreenCenterY) {
-        
-        Point2D segStartScreen = viewTransform.engineeringToScreen(engXStart, 0);
-        Point2D segEndScreen = viewTransform.engineeringToScreen(engXEnd, 0);
-        double segmentLengthEng = engXEnd - engXStart;
-
-        // Do not draw if segment is too small in engineering units or screen units
-        if (segmentLengthEng < 1e-3 || Math.abs(segEndScreen.getX() - segStartScreen.getX()) < 1.0) {
-            return;
-        }
-
-        // Main horizontal dimension line
-        gc.strokeLine(segStartScreen.getX(), dimLineScreenY, segEndScreen.getX(), dimLineScreenY);
-
-        // Extension line from segment start upwards to dimension line
-        gc.strokeLine(segStartScreen.getX(), beamScreenCenterY, segStartScreen.getX(), dimLineScreenY - TEMP_DIM_TICK_HEIGHT_SCREEN / 2);
-        // Tick at segment start on dimension line
-        gc.strokeLine(segStartScreen.getX(), dimLineScreenY - TEMP_DIM_TICK_HEIGHT_SCREEN / 2, segStartScreen.getX(), dimLineScreenY + TEMP_DIM_TICK_HEIGHT_SCREEN / 2);
-
-        // Extension line from segment end upwards to dimension line
-        gc.strokeLine(segEndScreen.getX(), beamScreenCenterY, segEndScreen.getX(), dimLineScreenY - TEMP_DIM_TICK_HEIGHT_SCREEN / 2);
-        // Tick at segment end on dimension line
-        gc.strokeLine(segEndScreen.getX(), dimLineScreenY - TEMP_DIM_TICK_HEIGHT_SCREEN / 2, segEndScreen.getX(), dimLineScreenY + TEMP_DIM_TICK_HEIGHT_SCREEN / 2);
-
-        // Dimension text for the segment
-        drawDimensionText(gc, segStartScreen.getX(), segEndScreen.getX(), dimLineScreenY, segmentLengthEng, TEMP_DIM_TEXT_OFFSET_Y_SCREEN, TEMP_DIM_TEXT_BG_PADDING_SCREEN);
-    }
-
-
-    // Helper method to draw dimension text (extracted from existing dimension line methods, can be generalized)
-    private void drawDimensionText(GraphicsContext gc, double segmentStartScreenX, double segmentEndScreenX, double dimLineScreenY, double segmentLengthEng, double textOffsetY, double bgPadding) {
-        String text = String.format("%.2f'", segmentLengthEng);
-        javafx.scene.text.Text tempTextNode = new javafx.scene.text.Text(text);
-        tempTextNode.setFont(gc.getFont());
-        double textWidth = tempTextNode.getLayoutBounds().getWidth();
-        double textHeight = tempTextNode.getLayoutBounds().getHeight(); // Ascent for Y positioning
-
-        double segmentMidScreenX = (segmentStartScreenX + segmentEndScreenX) / 2;
-        double textBaselineScreenY = dimLineScreenY + textOffsetY; // Adjusted for above/below via textOffsetY
-
-        // Ensure text is not drawn if segment is too small on screen
-        if (Math.abs(segmentEndScreenX - segmentStartScreenX) < textWidth + 2 * bgPadding) {
-            return;
-        }
-
-        gc.setFill(Color.WHITE); // Background for text
-        gc.fillRect(segmentMidScreenX - textWidth / 2 - bgPadding,
-                    textBaselineScreenY - textHeight - bgPadding, // textHeight is approx ascent, adjust for full bg box
-                    textWidth + 2 * bgPadding,
-                    tempTextNode.getLayoutBounds().getHeight() + 2 * bgPadding);
-        
-        gc.setFill(TEMP_DIM_TEXT_COLOR); // Text color
-        gc.setTextBaseline(VPos.BOTTOM); // Align text baseline correctly for the Y coord
-        gc.fillText(text, segmentMidScreenX, textBaselineScreenY);
-    }
-
-
-    
     /**
      * Draw the background grid
      * 
@@ -1091,258 +939,6 @@ gc.strokeLine(arrowX, arrowY,
      * 
      * @param gc Graphics context
      */
-    private void drawPermanentBottomDimensionLine(GraphicsContext gc) {
-        if (beamModel == null || beamModel.getSupports().isEmpty()) {
-            return; // No supports, no dimension line
-        }
 
-        List<Support> supports = new ArrayList<>(beamModel.getSupports()); // Create a mutable copy
-        // Sort supports by position to ensure correct order
-        supports.sort(Comparator.comparingDouble(Support::getPosition));
-
-        // Determine all points of interest (tick locations) in engineering coordinates
-        TreeSet<Double> tickLocationsEng = new TreeSet<>();
-        
-        // Always include the start (0.0) and end (beam length) of the beam
-        tickLocationsEng.add(0.0);  // Start of beam
-        tickLocationsEng.add(beamModel.getLength());  // End of beam
-        
-        // Add all support positions
-        for (Support support : supports) {
-            tickLocationsEng.add(support.getPosition());
-        }
-        
-        // The dimension line spans from 0 to beam length
-        List<Double> sortedTickLocationsEng = new ArrayList<>(tickLocationsEng);
-
-        if (sortedTickLocationsEng.size() < 2) {
-            return; // Not enough points to draw a dimension line segment
-        }
-
-        // --- Drawing --- 
-        gc.setStroke(PERMANENT_DIM_LINE_COLOR);
-        gc.setLineWidth(PERMANENT_DIM_LINE_WIDTH);
-        gc.setFill(PERMANENT_DIM_TEXT_COLOR);
-        // gc.setFont(PERMANENT_DIM_TEXT_FONT); // Set if a specific font is desired
-
-        // Calculate screen Y for the dimension line
-        double beamScreenCenterY = viewTransform.engineeringToScreen(0, 0).getY();
-        double dimLineScreenY = beamScreenCenterY + PERMANENT_DIM_LINE_OFFSET_Y_SCREEN;
-
-        // Draw main horizontal dimension line (from the first POI to the last POI)
-        Point2D overallDimStartScreen = viewTransform.engineeringToScreen(sortedTickLocationsEng.get(0), 0);
-        Point2D overallDimEndScreen = viewTransform.engineeringToScreen(sortedTickLocationsEng.get(sortedTickLocationsEng.size() - 1), 0);
-        gc.strokeLine(overallDimStartScreen.getX(), dimLineScreenY, overallDimEndScreen.getX(), dimLineScreenY);
-
-        // Draw ticks and segment labels
-        for (int i = 0; i < sortedTickLocationsEng.size(); i++) {
-            double currentTickEngX = sortedTickLocationsEng.get(i);
-            Point2D currentTickScreen = viewTransform.engineeringToScreen(currentTickEngX, 0);
-
-            // Draw vertical tick
-            gc.strokeLine(currentTickScreen.getX(), dimLineScreenY - PERMANENT_DIM_TICK_HEIGHT_SCREEN / 2,
-                          currentTickScreen.getX(), dimLineScreenY + PERMANENT_DIM_TICK_HEIGHT_SCREEN / 2);
-
-            // If there's a next tick, draw the segment label between current and next
-            if (i < sortedTickLocationsEng.size() - 1) {
-                double nextTickEngX = sortedTickLocationsEng.get(i + 1);
-                double segmentLengthEng = nextTickEngX - currentTickEngX;
-
-                // Only label significant segments (e.g., longer than 0.01 ft)
-                // And ensure screen width is enough for text (e.g. > 10 pixels)
-                Point2D nextTickScreen = viewTransform.engineeringToScreen(nextTickEngX, 0);
-                double segmentScreenWidth = Math.abs(nextTickScreen.getX() - currentTickScreen.getX());
-
-                if (segmentLengthEng > 1e-2 && segmentScreenWidth > 10) { 
-                    double segmentMidScreenX = (currentTickScreen.getX() + nextTickScreen.getX()) / 2;
-                    
-                    String text = String.format("%.2f'", segmentLengthEng);
-                    
-                    // Use a temporary Text node to measure text dimensions for background drawing
-                    javafx.scene.text.Text tempTextNode = new javafx.scene.text.Text(text);
-                    tempTextNode.setFont(gc.getFont()); // Use the canvas's current font for accurate measurement
-                    double textWidth = tempTextNode.getLayoutBounds().getWidth();
-                    double textHeight = tempTextNode.getLayoutBounds().getHeight(); // This is the full height of the text bounds
-
-                    double textBaselineScreenY = dimLineScreenY - PERMANENT_DIM_TEXT_OFFSET_Y_SCREEN; // Text baseline Y
-
-                    // Draw white background rectangle for the text
-                    gc.setFill(Color.WHITE); // Set fill for background
-                    gc.fillRect(segmentMidScreenX - textWidth / 2 - PERMANENT_DIM_TEXT_BG_PADDING_SCREEN,
-                                textBaselineScreenY - textHeight - PERMANENT_DIM_TEXT_BG_PADDING_SCREEN, // Background Y starts above baseline
-                                textWidth + 2 * PERMANENT_DIM_TEXT_BG_PADDING_SCREEN,
-                                textHeight + 2 * PERMANENT_DIM_TEXT_BG_PADDING_SCREEN);
-                    
-                    // Draw the dimension text
-                    gc.setFill(PERMANENT_DIM_TEXT_COLOR); // Set fill for text
-                    gc.setTextAlign(TextAlignment.CENTER);
-                    gc.setTextBaseline(VPos.BOTTOM); // Text is drawn with its bottom at textBaselineScreenY
-                    gc.fillText(text, segmentMidScreenX, textBaselineScreenY);
-                }
-            }
-        }
-    }
-
-    /**
-     * Draw the detailed bottom dimension line spanning all points of interest.
-     * Points of interest include: beam ends, supports, point loads, moments, 
-     * and start/stop of distributed loads.
-     * 
-     * @param gc Graphics context
-     */
-    private void drawDetailedBottomDimensionLine(GraphicsContext gc) {
-        if (beamModel == null) {
-            return;
-        }
-        
-        // Get the permanent dimension line segments (as start/end pairs)
-        List<Pair<Double, Double>> permanentDimensionSegments = new ArrayList<>();
-        if (beamModel != null && !beamModel.getSupports().isEmpty()) {
-            List<Support> supports = new ArrayList<>(beamModel.getSupports()); // Create a mutable copy
-            supports.sort(Comparator.comparingDouble(Support::getPosition));
-
-            TreeSet<Double> permTickLocationsEngSet = new TreeSet<>();
-            for (Support support : supports) {
-                permTickLocationsEngSet.add(support.getPosition());
-            }
-
-            // The permanent dimension line effectively starts at the first support
-            // and ends at the maximum of the last support's position or the beam's total length.
-            if (!supports.isEmpty()) { // Ensure there are supports before accessing them
-                double permDimLineOverallStartEngX = supports.get(0).getPosition();
-                double permLastSupportEngX = supports.get(supports.size() - 1).getPosition();
-                double permDimLineOverallEndEngX = Math.max(permLastSupportEngX, beamModel.getLength());
-
-                permTickLocationsEngSet.add(permDimLineOverallStartEngX); // Ensure first support is a tick
-                permTickLocationsEngSet.add(permDimLineOverallEndEngX);   // Ensure effective end is a tick
-            }
-
-            List<Double> sortedPermTickLocationsEng = new ArrayList<>(permTickLocationsEngSet);
-
-            if (sortedPermTickLocationsEng.size() >= 2) {
-                for (int k = 0; k < sortedPermTickLocationsEng.size() - 1; k++) {
-                    double segStart = sortedPermTickLocationsEng.get(k);
-                    double segEnd = sortedPermTickLocationsEng.get(k + 1);
-                    double segLength = segEnd - segStart;
-
-                    if (segLength > 1e-2) { // Only add significant segments
-                         permanentDimensionSegments.add(new Pair<>(segStart, segEnd));
-                    }
-                }
-            }
-        }
-
-        TreeSet<Double> tickLocationsEng = new TreeSet<>();
-
-        // Add beam start and end
-        tickLocationsEng.add(0.0);
-        tickLocationsEng.add(beamModel.getLength());
-
-        // Add support positions
-        for (Support support : beamModel.getSupports()) {
-            tickLocationsEng.add(support.getPosition());
-        }
-
-        // Add load positions (point loads, moments, start/end of distributed loads)
-        for (Load load : beamModel.getLoads()) {
-            tickLocationsEng.add(load.getPosition());
-            if (load.getType() == Load.Type.DISTRIBUTED) {
-                tickLocationsEng.add(load.getEndPosition());
-            }
-        }
-
-        List<Double> sortedTickLocationsEng = new ArrayList<>(tickLocationsEng);
-
-        if (sortedTickLocationsEng.size() < 2) {
-            return; // Not enough points to draw a dimension line segment
-        }
-
-        // --- Drawing --- 
-        gc.setStroke(DETAILED_DIM_LINE_COLOR);
-        gc.setLineWidth(DETAILED_DIM_LINE_WIDTH);
-        gc.setFill(DETAILED_DIM_TEXT_COLOR);
-
-        // Calculate screen Y for the dimension line
-        double beamScreenCenterY = viewTransform.engineeringToScreen(0, 0).getY();
-        double dimLineScreenY = beamScreenCenterY + DETAILED_DIM_LINE_OFFSET_Y_SCREEN;
-
-        // The main horizontal dimension line is now drawn per segment below, not as one continuous line.
-
-        // First pass: Collect all the segments that should be drawn
-        List<Double> segmentStarts = new ArrayList<>();
-        List<Double> segmentEnds = new ArrayList<>();
-        List<Double> segmentLengths = new ArrayList<>();
-        
-        for (int i = 0; i < sortedTickLocationsEng.size() - 1; i++) {
-            double currentTickEngX = sortedTickLocationsEng.get(i);
-            double nextTickEngX = sortedTickLocationsEng.get(i + 1);
-            double segmentLengthEng = nextTickEngX - currentTickEngX;
-            
-            // Only consider significant segments
-            Point2D currentTickScreen = viewTransform.engineeringToScreen(currentTickEngX, 0);
-            Point2D nextTickScreen = viewTransform.engineeringToScreen(nextTickEngX, 0);
-            double segmentScreenWidth = Math.abs(nextTickScreen.getX() - currentTickScreen.getX());
-            
-            if (segmentLengthEng > 1e-2 && segmentScreenWidth > 10) {
-                // Check if this exact segment (by start and end points) is in the permanent dimension line
-                boolean isDuplicate = false;
-                for (Pair<Double, Double> permSegmentPair : permanentDimensionSegments) {
-                    if (Math.abs(permSegmentPair.getKey() - currentTickEngX) < 0.01 &&
-                        Math.abs(permSegmentPair.getValue() - nextTickEngX) < 0.01) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-                
-                // Only add non-duplicate segments
-                if (!isDuplicate) {
-                    segmentStarts.add(currentTickEngX);
-                    segmentEnds.add(nextTickEngX);
-                    segmentLengths.add(segmentLengthEng);
-                }
-            }
-        }
-        
-        // Second pass: Draw the dimension line and ticks only for non-duplicate segments
-        for (int i = 0; i < segmentStarts.size(); i++) {
-            double startEngX = segmentStarts.get(i);
-            double endEngX = segmentEnds.get(i);
-            double segmentLengthEng = segmentLengths.get(i);
-            
-            Point2D startScreen = viewTransform.engineeringToScreen(startEngX, 0);
-            Point2D endScreen = viewTransform.engineeringToScreen(endEngX, 0);
-            
-            // Draw the horizontal dimension line segment
-            gc.strokeLine(startScreen.getX(), dimLineScreenY, endScreen.getX(), dimLineScreenY);
-            
-            // Draw vertical ticks at both ends
-            gc.strokeLine(startScreen.getX(), dimLineScreenY - DETAILED_DIM_TICK_HEIGHT_SCREEN / 2,
-                          startScreen.getX(), dimLineScreenY + DETAILED_DIM_TICK_HEIGHT_SCREEN / 2);
-            gc.strokeLine(endScreen.getX(), dimLineScreenY - DETAILED_DIM_TICK_HEIGHT_SCREEN / 2,
-                          endScreen.getX(), dimLineScreenY + DETAILED_DIM_TICK_HEIGHT_SCREEN / 2);
-            
-            // Draw the dimension text
-            double segmentMidScreenX = (startScreen.getX() + endScreen.getX()) / 2;
-            String text = String.format("%.2f'", segmentLengthEng);
-            
-            javafx.scene.text.Text tempTextNode = new javafx.scene.text.Text(text);
-            tempTextNode.setFont(gc.getFont());
-            double textWidth = tempTextNode.getLayoutBounds().getWidth();
-            double textHeight = tempTextNode.getLayoutBounds().getHeight();
-            double textBaselineScreenY = dimLineScreenY - DETAILED_DIM_TEXT_OFFSET_Y_SCREEN;
-            
-            // Draw white background for text
-            gc.setFill(Color.WHITE);
-            gc.fillRect(segmentMidScreenX - textWidth / 2 - DETAILED_DIM_TEXT_BG_PADDING_SCREEN,
-                        textBaselineScreenY - textHeight - DETAILED_DIM_TEXT_BG_PADDING_SCREEN,
-                        textWidth + 2 * DETAILED_DIM_TEXT_BG_PADDING_SCREEN,
-                        textHeight + 2 * DETAILED_DIM_TEXT_BG_PADDING_SCREEN);
-            
-            // Draw the text
-            gc.setFill(DETAILED_DIM_TEXT_COLOR);
-            gc.setTextAlign(TextAlignment.CENTER);
-            gc.setTextBaseline(VPos.BOTTOM);
-            gc.fillText(text, segmentMidScreenX, textBaselineScreenY);
-        }
-    }
 }
+
