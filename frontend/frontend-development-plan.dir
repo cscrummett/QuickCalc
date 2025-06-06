@@ -92,29 +92,81 @@
 
 ---
 
-## Stage 4: Make Elements Interactive
-**Goal**: Click and drag loads/supports along the beam
+## Stage 4: Interactive Load Editing via Dimension Lines (No Free Drag)
+
+Goal: Enable engineers to precisely control load positions and spans using dimension lines. Free dragging is disabled in favor of deterministic, editable dimensioning tied to supports.
 
 ### Files to Add:
-- [ ] `views/components/InteractiveElement.java` - Base class for clickable elements
-- [ ] `views/components/LoadMarker.java` - Draggable load representation
-- [ ] `views/components/SupportMarker.java` - Draggable support representation
-- [ ] `exceptions/InvalidBeamException.java` - For invalid positioning
+- [ ] views/components/InteractiveElement.java – Base for all selectable beam elements (supports, loads).
+- [ ] views/components/LoadMarker.java – Represents point or distributed loads with editable dimensions.
+- [ ] views/components/SupportMarker.java – Visual marker for pinned, roller, or fixed supports.
+- [ ] views/components/DimensionLine.java – Render logic for both editable and static dimensions.
+- [ ] views/components/SupportSpanDimension.java – Non-editable dimension line from support-to-support (or support to edge for cantilevers).
+- [ ] keyboard/DimensionNavigationManager.java – Handles TAB navigation through editable dimensions.
+- [ ] exceptions/InvalidBeamException.java – For invalid positions or overlapping logic.
 
 ### Files to Modify:
-- [ ] `BeamCanvas.java` - Add comprehensive mouse interaction logic
-- [ ] Add hit testing to find elements under mouse cursor
+- [ ] BeamCanvas.java  
+    - Draw three dimension layers:
+        - Temporary editable (hover) – Above beam.
+        - Permanent load snapping (non-editable) – Below beam.
+        - Support-to-support spans (non-editable) – Below all dimensions.
+    - Manage element selection, keyboard navigation, and edit updates.
+- [ ] Beam model classes – Add logic to support snapping, dimension labels, and length calculations.
 
-### Tasks:
-- [ ] Implement mouse press/drag/release handlers
-- [ ] Add hit testing for supports and loads
-- [ ] Implement dragging with live preview
-- [ ] Add snapping to grid or specific intervals
-- [ ] Prevent invalid positioning (loads/supports off beam)
-- [ ] Add visual feedback during dragging (hover effects)
-- [ ] Update model when elements are moved
+### Dimension Layers Overview:
+1. **Temporary Editable Dimensions (Top)**  
+    - Visible on hover only.  
+    - Show:
+        - Distance from nearest support (for point or distributed loads).
+        - Width (for distributed loads).
+    - Editable via `TAB` and `Enter`.
 
-**Success Criteria**: Can drag loads and supports along the beam smoothly
+2. **Permanent Load Dimensions (Middle, Below Beam)**  
+    - Always visible.  
+    - Snap from support to:
+        - Point load.
+        - Left/right edges of distributed load.  
+    - Non-editable — display only.
+
+3. **Permanent Span Dimensions (Bottom Row)**  
+    - Always visible.  
+    - Show distances:
+        - Support to support (for spans).
+        - Support to beam end (if cantilever).
+    - Non-editable and styled as a drafting reference grid.
+
+### Interaction Model:
+
+- **Hovering**  
+    - Shows temporary editable dimension lines above the beam.  
+    - Highlighted dimension is bold or colored.  
+    - `TAB` cycles between:
+        - Support-to-load distance (left to right).
+        - Width for distributed loads.
+
+- **Selecting**  
+    - Clicking a load/support permanently highlights it.  
+    - Activates inline editing for associated dimension lines (top only).  
+    - Properties (e.g., magnitude, load case) become editable via panel or popover.
+
+- **Editing**  
+    - Active dimension → click or `Enter` opens editable `TextField`.  
+    - On input change:
+        - Updates load location or width.
+        - Snaps to nearest 0.01 ft (or user-defined resolution).
+        - Validates position against beam/support limits.
+
+### Constraints & Validation:
+- [ ] Loads may overlap (e.g., 1k dead + 0.5k live at same location).
+- [ ] No positions beyond beam ends or inside support zones.
+- [ ] Distributed loads must have width > 0.5 ft and fit within beam.
+
+### Success Criteria:
+- Hovering shows editable dimension overlays with `TAB`/`Enter` navigation.
+- Permanent dimension system is always visible and reflects structural layout.
+- Support span dimensions clearly show beam framing (and cantilever extents).
+- Engineers can confidently locate and size loads visually with no ambiguity.
 
 ---
 

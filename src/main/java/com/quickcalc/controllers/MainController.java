@@ -4,7 +4,6 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
@@ -18,7 +17,6 @@ import com.quickcalc.models.BeamModel;
 import com.quickcalc.models.Load;
 import com.quickcalc.models.Support;
 import com.quickcalc.views.components.BeamCanvas;
-import com.quickcalc.utils.Point2D;
 
 /**
  * Controller for the main application window
@@ -80,9 +78,6 @@ public class MainController {
         beamCanvas.widthProperty().bind(beamCanvasContainer.widthProperty());
         beamCanvas.heightProperty().bind(beamCanvasContainer.heightProperty());
         
-        // Set up mouse move listener for coordinate display
-        beamCanvas.setOnMouseMoved(this::updateCoordinatesDisplay);
-        
         // Set up key event handler at the container level
         beamCanvasContainer.setOnKeyPressed(this::handleKeyPressed);
         beamCanvasContainer.setFocusTraversable(true);
@@ -110,21 +105,21 @@ public class MainController {
         this.primaryStage = primaryStage;
     }
     
-    /**
-     * Update the coordinates display in the status bar
-     * 
-     * @param event Mouse event
-     */
-    private void updateCoordinatesDisplay(MouseEvent event) {
-        if (beamCanvas != null) {
+    // /**
+    //  * Update the coordinates display in the status bar
+    //  * 
+    //  * @param event Mouse event
+    //  */
+    // private void updateCoordinatesDisplay(MouseEvent event) {
+        // if (beamCanvas != null) {
             // Convert screen coordinates to engineering coordinates
-            Point2D engineeringPoint = beamCanvas.screenToEngineering(event.getX(), event.getY());
+            // Point2D engineeringPoint = beamCanvas.screenToEngineering(event.getX(), event.getY());
             
             // Update the coordinates label
-            coordinatesLabel.setText(String.format("Position: (%.2f', %.2f')", 
-                    engineeringPoint.getX(), engineeringPoint.getY()));
-        }
-    }
+            // coordinatesLabel.setText(String.format("Position: (%.2f', %.2f')", 
+            //         engineeringPoint.getX(), engineeringPoint.getY()));
+        // }
+    // }
     
     // File menu handlers
     

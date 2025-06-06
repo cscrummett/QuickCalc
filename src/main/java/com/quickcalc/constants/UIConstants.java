@@ -58,4 +58,21 @@ public class UIConstants {
     
     // Snap distance (in pixels)
     public static final double SNAP_DISTANCE = 10.0;
+
+    // Marker Interaction Properties (for bounding boxes and highlighting)
+    public static final double POINT_LOAD_MARKER_HEIGHT_PX = 40.0; // Corresponds to POINT_LOAD_ARROW_LENGTH
+    public static final double POINT_LOAD_MARKER_WIDTH_PX = 15.0;  // Based on POINT_LOAD_ARROW_HEAD_SIZE, made a bit wider
+    public static final double DISTRIBUTED_LOAD_MARKER_HEIGHT_PX = 20.0; // A defined height for UDL interaction block
+    public static final double MOMENT_MARKER_RADIUS_PX = MOMENT_RADIUS; // Use existing visual radius for interaction
+    
+    public static final double SUPPORT_MARKER_WIDTH_PX = SUPPORT_SIZE; // Use existing visual size for interaction
+    public static final double SUPPORT_MARKER_HEIGHT_PX = SUPPORT_SIZE; // Use existing visual size for interaction
+
+    public static final Color HIGHLIGHT_COLOR = Color.ORANGE; // Using existing SELECTION_COLOR value
+    public static final double HIGHLIGHT_LINE_WIDTH = 2.5;
+
+    // Engineering Constraints & Behavior
+    public static final double UDL_MIN_LENGTH_FT = 0.5; // Minimum length for a UDL in feet
+
+    public static final double ENGINEERING_SNAP_INCREMENT_FT = 0.1; // Snap increment in feet for precise placement
 }

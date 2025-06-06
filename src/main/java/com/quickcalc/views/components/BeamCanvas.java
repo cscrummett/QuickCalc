@@ -12,6 +12,9 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.KeyCode;
+import javafx.application.Platform;
 import javafx.scene.Cursor;
 import javafx.scene.text.TextAlignment;
 import java.util.ArrayList;
@@ -67,12 +70,30 @@ public class BeamCanvas extends Canvas {
             draw();
         });
         
-        // Set up mouse event handlers
+        // Make canvas focusable and request focus
+        setFocusTraversable(true);
+        
+        // Set up mouse and key event handlers
         setupMouseHandlers();
         
         // Initial fit and draw
         populateInteractiveElements(); // Populate before first draw
         fitViewToBeam();
+        
+        // Request focus after the scene is shown
+        sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                // Add global key event filter for Escape key
+                newScene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleGlobalKeyPress);
+                
+                // Request focus after the window is shown
+                Platform.runLater(() -> {
+                    requestFocus();
+                    System.out.println("BeamCanvas: Initial focus requested");
+                });
+            }
+        });
+        
         draw();
     }
     
@@ -187,10 +208,22 @@ public class BeamCanvas extends Canvas {
     private static final long DOUBLE_CLICK_TIME_MS = 300; // Double-click threshold in milliseconds
     
     /**
-     * Set up mouse event handlers for zoom and pan
+     * Set up mouse and keyboard event handlers for interaction
      */
+    /**
+     * Handle global key press events (works even when canvas doesn't have focus)
+     */
+    private void handleGlobalKeyPress(KeyEvent event) {
+        if (event.getCode() == KeyCode.ESCAPE) {
+            System.out.println("Global ESC key detected");
+            unselectCurrentElement();
+            requestFocus(); // Bring focus back to canvas
+            event.consume();
+        }
+    }
+    
     private void setupMouseHandlers() {
-        System.out.println("[BeamCanvas] setupMouseHandlers: Setting up mouse event handlers...");
+        System.out.println("[BeamCanvas] setupMouseHandlers: Setting up mouse and keyboard event handlers...");
         // Scroll to zoom
         setOnScroll(this::handleScroll);
         
@@ -198,12 +231,35 @@ public class BeamCanvas extends Canvas {
         setOnMouseMoved(this::handleMouseMoved);
 
         // Mouse clicks for selection and middle-click for pan/zoom-to-fit trigger
-        setOnMousePressed(this::handleMousePressed);
+        setOnMousePressed(event -> {
+            // Request focus on any mouse press
+            requestFocus();
+            handleMousePressed(event);
+        });
+        
         setOnMouseDragged(this::handleMouseDragged); // Primarily for panning
         setOnMouseReleased(this::handleMouseReleased); // Primarily for panning
         
         // Middle-click double-click to zoom-to-fit
         setOnMouseClicked(this::handleMouseClicked);
+        
+        // Key press handling (e.g., ESC to unselect)
+        setOnKeyPressed(this::handleKeyPressed);
+        
+        // Request focus when mouse enters the canvas
+        setOnMouseEntered(event -> {
+            System.out.println("Mouse entered canvas, requesting focus");
+            requestFocus();
+        });
+        
+        // Request focus when the canvas is clicked
+        setOnMouseClicked(event -> {
+            if (event.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                System.out.println("Primary click on canvas, requesting focus");
+                requestFocus();
+            }
+            handleMouseClicked(event);
+        });
     }
     
     /**
@@ -213,7 +269,7 @@ public class BeamCanvas extends Canvas {
      * Handle mouse movement for hover effects.
      */
     private void handleMouseMoved(MouseEvent event) {
-        System.out.println("MouseMoved: (" + event.getX() + ", " + event.getY() + ")");
+        System.out.println("MouseMoved: (" + event.getX() + ", " + event.getY() + "), Focused: " + isFocused());
         InteractiveElement currentlyUnderMouse = null;
         // Iterate in reverse to check top-most elements first
         for (int i = interactiveElements.size() - 1; i >= 0; i--) {
@@ -248,6 +304,31 @@ public class BeamCanvas extends Canvas {
         event.consume();
     }
 
+    /**
+     * Handle key press events
+     */
+    private void handleKeyPressed(KeyEvent event) {
+        if (event.getCode() == KeyCode.ESCAPE) {
+            unselectCurrentElement();
+            event.consume();
+        }
+    }
+    
+    /**
+     * Unselect the currently selected element if any
+     */
+    private void unselectCurrentElement() {
+        if (selectedElement != null) {
+            selectedElement.setSelected(false);
+            System.out.println("  Deselected (via ESC): " + selectedElement.getClass().getSimpleName() + 
+                             "@" + Integer.toHexString(System.identityHashCode(selectedElement)));
+            selectedElement = null;
+            draw(); // Redraw to show selection changes
+        } else {
+            System.out.println("No element selected to unselect");
+        }
+    }
+    
     private void handleMouseClicked(MouseEvent event) {
         if (event.getButton() == javafx.scene.input.MouseButton.MIDDLE) {
             long currentTime = System.currentTimeMillis();
@@ -321,13 +402,6 @@ public class BeamCanvas extends Canvas {
             
             draw();
             event.consume();
-        } else if (event.isPrimaryButtonDown()) {
-            // For Stage 4, primary button drag does not move elements directly.
-            // Dimension line interaction will handle changes.
-            // We can consume the event if an element is selected to prevent other drag behaviors.
-            if (selectedElement != null) {
-                event.consume();
-            }
         }
     }
     
@@ -339,13 +413,6 @@ public class BeamCanvas extends Canvas {
             isPanning = false;
             setCursor(Cursor.DEFAULT);
             event.consume();
-        } else if (event.isPrimaryButtonDown()) {
-            // If a selection was made, primary button release doesn't have a specific action yet
-            // for simple selection. Future dimension editing might use this.
-            if (selectedElement != null) {
-                // Potentially finalize an edit operation here in the future
-                event.consume();
-            }
         }
     }
     
