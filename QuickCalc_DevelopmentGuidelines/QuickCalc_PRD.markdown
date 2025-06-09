@@ -166,35 +166,35 @@ This PRD outlines the functional and non-functional requirements, visual design,
     - **NumPy/SciPy**: FEA (stiffness matrices, sparse solvers).
     - **Pandas**: AISC/NDS libraries.
     - **ReportLab**: PDF reports.
-- **Frontend**: JavaScript with Electron
-  - **Framework**: Electron for cross-platform desktop.
-  - **Libraries**:
-    - **D3.js**: Gradient-filled 2D diagrams.
-    - **Tailwind CSS**: Modern, clean UI styling.
-    - **Anime.js**: Micro-animations (e.g., slide-in).
+- **Frontend**: JavaFX
+  - **Framework**: JavaFX for cross-platform desktop.
+  - **Components**:
+    - **Canvas**: Custom 2D drawing with gradient-filled diagrams.
+    - **FXML/CSS**: Modern, clean UI styling.
+    - **JavaFX Animations**: Micro-animations (e.g., slide-in).
 - **Storage**: JSON for projects (multi-beam) and libraries.
-- **Build**: PyInstaller (Python), Electron Builder (JS).
-- **Testing**: Pytest (backend), Jest (frontend).
+- **Build**: PyInstaller (Python), Gradle/JavaFX jlink (Java).
+- **Testing**: Pytest (backend), JUnit (frontend).
 
 ### 6.2 System Components
-- **Frontend (Electron/JS)**:
-  - Input panel: Tailwind-styled forms for beams, supports, loads.
+- **Frontend (JavaFX)**:
+  - Input panel: FXML-styled forms for beams, supports, loads.
   - Project sidebar: List projects and beams for quick access.
-  - Visualization area: D3.js diagrams with grid background.
+  - Visualization area: JavaFX Canvas diagrams with grid background.
   - Results panel: Card-based results/recommendations.
   - Settings: Toggles for grid, load combinations, units.
 - **Backend (Python)**:
   - FEA engine: Solve multi-span beams (displacements, forces).
   - Design module: Check AISC/ASCE/NDS or custom criteria.
   - Data handler: Manage JSON projects (multiple beams).
-- **Integration**: Python APIs (Flask/Pyodide) for frontend-backend communication.
-- **Visualization Engine**: D3.js for SVG diagrams, Tailwind for grid, Anime.js for animations.
+- **Integration**: Python subprocess communication via JSON for frontend-backend communication.
+- **Visualization Engine**: JavaFX Canvas for custom diagrams, CSS for styling, JavaFX Animations for transitions.
 
 ### 6.3 Data Flow
 1. User selects/creates project in sidebar, adds beam via forms.
-2. JS validates inputs, sends JSON to Python backend.
+2. JavaFX validates inputs, sends JSON to Python backend via subprocess.
 3. Backend runs FEA (with selected load combination), returns results.
-4. Frontend renders gradient-filled diagrams and results.
+4. Frontend renders gradient-filled diagrams and results on Canvas.
 5. Project saved as JSON, containing all beams.
 6. User exports report or switches beams within project.
 
@@ -226,22 +226,22 @@ This PRD outlines the functional and non-functional requirements, visual design,
 
 ### 8.1 Phases and Order of Operations
 1. **Phase 1: Setup and Prototype**
-   - Set up Python (NumPy, SciPy, ReportLab) and Electron (D3.js, Tailwind, Anime.js).
-   - Use Cursor AI to scaffold project (backend APIs, frontend layout).
+   - Set up Python (NumPy, SciPy, ReportLab) and JavaFX development environment.
+   - Use Cursor AI to scaffold project (backend APIs, JavaFX frontend layout).
    - Develop FEA prototype for single-span beam with point load (1.0 factor).
-   - Create minimalist SVG icons for supports/loads (Inkscape or open-source).
+   - Create minimalist drawing methods for supports/loads in JavaFX Canvas.
    - Implement basic project-based JSON saving (single beam).
    - Test FEA against manual calculations.
 2. **Phase 2: Core Development**
    - Extend FEA to multi-span beams (10–20 elements/span).
-   - Build UI: Sidebar for projects/beams, input forms, basic diagrams (D3.js).
+   - Build UI: Sidebar for projects/beams, input forms, basic diagrams (JavaFX Canvas).
    - Add load combination logic (none, ASCE 7, custom).
    - Integrate AISC/NDS JSON libraries.
    - Enable multi-beam storage per project.
    - Use Cursor AI to debug FEA and UI interactions.
 3. **Phase 3: Visuals and Design**
-   - Add gradient-filled diagrams and light grey/tan grid (toggleable).
-   - Implement micro-animations (Anime.js, e.g., slide-in).
+   - Add gradient-filled diagrams and light grey/tan grid (toggleable) using JavaFX Canvas.
+   - Implement micro-animations (JavaFX Animations, e.g., slide-in).
    - Develop design module for AISC/ASCE/NDS and custom criteria.
    - Add settings for grid, load combinations, units.
    - Test usability with multi-span problems.
@@ -250,18 +250,18 @@ This PRD outlines the functional and non-functional requirements, visual design,
    - Polish UI for <1-minute setup (e.g., shortcuts, defaults).
    - Optimize FEA (<1 second for 3 spans).
    - Finalize project-based saving (multiple beams).
-   - Package with PyInstaller/Electron Builder.
+   - Package with PyInstaller and JavaFX jlink/jpackage.
    - Publish to GitHub with MIT license.
 
 ### 8.2 Tools and Resources
 - **IDE**: Cursor AI for coding, debugging, autocompletion.
 - **Version Control**: Git/GitHub.
 - **Assets**: Inkscape for SVGs or open-source libraries (e.g., Heroicons).
-- **Testing**: Pytest (FEA), Jest (UI), manual testing for visuals.
+- **Testing**: Pytest (FEA), JUnit (UI), manual testing for visuals.
 - **Documentation**: Markdown user manual, docstrings for code.
 
 ### 8.3 Solo Development Tips
-- **Cursor AI**: Prompt for FEA (e.g., “Python beam FEA with load combinations”), UI (e.g., “Tailwind sidebar for project navigation”), JSON handling.
+- **Cursor AI**: Prompt for FEA (e.g., “Python beam FEA with load combinations”), UI (e.g., “JavaFX sidebar for project navigation”), JSON handling.
 - **Modular Code**: Separate FEA, UI, visualization, data management.
 - **Visuals**: Start with simple SVGs, add gradients/animations later.
 - **Testing**: Validate FEA with Enercalc or manual solutions.
@@ -279,7 +279,7 @@ This PRD outlines the functional and non-functional requirements, visual design,
 
 ## 10. Next Steps
 - **Start Coding**: Use existing FEA prototype (single-span beam) and extend for multi-span.
-- **UI Mockup**: Develop HTML/CSS mockup with Tailwind for sidebar, forms, and diagrams.
+- **UI Mockup**: Develop FXML/CSS mockup with JavaFX for sidebar, forms, and diagrams.
 - **Assets**: Create/source minimalist SVGs for supports/loads.
-- **Cursor AI**: Use prompts for FEA, UI, and JSON handling (e.g., “Add ASCE 7 load combinations to Python FEA”).
+- **Cursor AI**: Use prompts for FEA, JavaFX UI, and JSON handling (e.g., “Add ASCE 7 load combinations to Python FEA”).
 - **Community**: Plan GitHub repository setup with CONTRIBUTING.md for open-source contributions.

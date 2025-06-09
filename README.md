@@ -78,9 +78,28 @@ If you prefer or need to compile and run manually, follow the steps outlined in 
     java --module-path $env:JAVAFX_MODULES --add-modules javafx.controls,javafx.fxml -cp bin com.quickcalc.Main
     ```
 
-## Python Component (If Applicable)
+## Python Backend
 
-The previous `README.md` (and your earlier comment) mentioned a Python component. If this project still involves a Python backend or any other Python parts, please provide details on its setup, how it's run, and how it interacts with the JavaFX application. This information is needed to make this section of the README accurate.
+QuickCalc uses a Python backend for finite element analysis (FEA) calculations. The backend is located in the `backend/` directory and includes:
+
+### Python Components
+- `fea.py` - Core finite element analysis engine using NumPy/SciPy
+- `load_combinations.py` - Load combination logic (ASCE 7, custom factors)
+- `data.py` - Beam data handling and validation
+- `app.py` - Main analysis interface
+
+### Python Setup
+1. Install Python 3.10+ 
+2. Install dependencies: `pip install -r requirements.txt`
+3. The JavaFX application communicates with Python via subprocess calls
+
+### Integration
+- JavaFX sends beam data as JSON to Python subprocess
+- Python performs FEA calculations and returns results as JSON
+- Results include reactions, shear/moment diagrams, and deflections
+
+### Testing Python Backend
+Run tests independently: `python -m pytest tests/` from project root
 
 ## License
 

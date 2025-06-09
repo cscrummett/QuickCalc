@@ -13,10 +13,10 @@ This to-do list provides a step-by-step guide for building **QuickCalc**, a cros
 
 2. **Scaffold Project Structure**
 
-   - DONE Create directories: `backend` (Python), `frontend` (Electron/JS), `assets` (SVGs).
+   - DONE Create directories: `backend` (Python), `frontend` (JavaFX), `assets` (SVGs).
    - DONE Initialize Python project with `pyproject.toml` or `requirements.txt`.
-   - DONE Initialize Electron project with `package.json` (include D3.js, Tailwind CSS, Anime.js).
-   - DONE Use Cursor AI to generate boilerplate: “Scaffold Python backend with Flask API and Electron frontend with Tailwind.”
+   - DONE Initialize JavaFX project with `build.gradle` (include JavaFX controls, FXML).
+   - DONE Use Cursor AI to generate boilerplate: “Scaffold Python backend with subprocess API and JavaFX frontend.”
 
 3. **Develop FEA Prototype (Single-Span Beam)**
 
@@ -62,12 +62,12 @@ This to-do list provides a step-by-step guide for building **QuickCalc**, a cros
 
  9. **Build Core UI**
 
-    - Create Electron frontend with Tailwind CSS:
+    - Create JavaFX frontend with FXML/CSS:
       - **Sidebar**: Project and beam list (e.g., “Project: Warehouse” → “Beam 1: 20 ft”).
       - **Input Panel**: Forms for spans, sections (AISC/NDS dropdowns), materials, supports (drag-and-drop).
       - **Load Input**: Click-to-place loads (point: glowing dot, UDL: gradient bar).
-    - Use D3.js for basic beam sketch (no force diagrams yet).
-    - Prompt Cursor AI: “Build Tailwind CSS UI with sidebar and drag-and-drop inputs for Electron.”
+    - Use JavaFX Canvas for basic beam sketch (no force diagrams yet).
+    - Prompt Cursor AI: “Build JavaFX UI with sidebar and drag-and-drop inputs.”
 
 10. **Integrate AISC/NDS Libraries**
 
@@ -94,24 +94,24 @@ This to-do list provides a step-by-step guide for building **QuickCalc**, a cros
 
 13. **Implement Gradient-Filled Diagrams**
 
-    - Use D3.js to render shear, moment, and deflection diagrams with teal-to-red gradients.
+    - Use JavaFX Canvas to render shear, moment, and deflection diagrams with teal-to-red gradients.
     - Add light grey/tan grid background (blueprint-style).
     - Enable hover effects to show values (e.g., max moment).
-    - Prompt Cursor AI: “Create D3.js diagrams with gradient fills for shear/moment.”
+    - Prompt Cursor AI: “Create JavaFX Canvas diagrams with gradient fills for shear/moment.”
 
 14. **Add Micro-Animations**
 
-    - Use Anime.js for subtle transitions:
+    - Use JavaFX Animations for subtle transitions:
       - Slide-in for diagrams when analysis completes.
       - Fade-in for inputs when adding loads/supports.
     - Keep animations minimal to maintain professionalism.
-    - Prompt Cursor AI: “Add Anime.js slide-in animations for D3.js diagrams.”
+    - Prompt Cursor AI: “Add JavaFX slide-in animations for Canvas diagrams.”
 
 15. **Develop Design Module**
 
     - Implement checks for AISC 360, ASCE 7, NDS, or custom criteria (e.g., L/480 deflection).
     - Recommend optimal sections (minimize weight, ensure compliance).
-    - Display results in Tailwind-styled cards (e.g., “W10x12: Pass, L/400”).
+    - Display results in JavaFX-styled cards (e.g., “W10x12: Pass, L/400”).
     - Prompt Cursor AI: “Write Python design module for AISC/NDS beam sizing.”
 
 16. **Add Settings Menu**
@@ -121,7 +121,7 @@ This to-do list provides a step-by-step guide for building **QuickCalc**, a cros
       - Grid background: On (default), off.
       - Units: Imperial (default), SI.
     - Store settings in JSON (per project).
-    - Prompt Cursor AI: “Build Tailwind settings menu for Electron.”
+    - Prompt Cursor AI: “Build JavaFX settings menu.”
 
 17. **Test Visuals and Design**
 
@@ -148,7 +148,7 @@ This to-do list provides a step-by-step guide for building **QuickCalc**, a cros
     - Implement undo/redo for inputs with smooth feedback.
     - Add tooltips and searchable help menu with AISC/ASCE/NDS references.
     - Optimize for &lt;1-minute setup (e.g., default values, templates).
-    - Prompt Cursor AI: “Add keyboard shortcuts and tooltips to Tailwind UI.”
+    - Prompt Cursor AI: “Add keyboard shortcuts and tooltips to JavaFX UI.”
 
 20. **Optimize FEA Performance**
 
@@ -173,7 +173,7 @@ This to-do list provides a step-by-step guide for building **QuickCalc**, a cros
 
 ## Additional Notes
 
-- **Cursor AI Usage**: Use prompts like “Generate Python FEA for multi-span beams,” “Build Tailwind sidebar,” or “Optimize D3.js diagrams” to accelerate development.
+- **Cursor AI Usage**: Use prompts like “Generate Python FEA for multi-span beams,” “Build JavaFX sidebar,” or “Optimize JavaFX Canvas diagrams” to accelerate development.
 - **Testing**: Validate FEA against Enercalc or manual calculations at each phase.
 - **Assets**: Prioritize minimalist SVGs; consider hiring a designer for polished icons if budget allows.
 - **Community**: Engage Eng-Tips forum for beta testing and feedback.
