@@ -208,6 +208,26 @@ public class BeamCanvas extends Canvas {
     }
     
     /**
+     * Zoom in at the center of the canvas
+     */
+    public void zoomIn() {
+        double centerX = getWidth() / 2;
+        double centerY = getHeight() / 2;
+        viewTransform.zoom(centerX, centerY, 1.1);
+        draw();
+    }
+    
+    /**
+     * Zoom out at the center of the canvas
+     */
+    public void zoomOut() {
+        double centerX = getWidth() / 2;
+        double centerY = getHeight() / 2;
+        viewTransform.zoom(centerX, centerY, 0.9);
+        draw();
+    }
+    
+    /**
      * Convert screen coordinates to engineering coordinates
      * 
      * @param screenX X-coordinate in screen units (pixels)

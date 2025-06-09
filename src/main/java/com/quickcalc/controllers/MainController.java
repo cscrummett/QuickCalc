@@ -1,27 +1,23 @@
 package com.quickcalc.controllers;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.application.Platform;
-
-import java.io.File;
 
 import com.quickcalc.models.BeamModel;
-import com.quickcalc.models.Load;
-import com.quickcalc.models.Support;
+import com.quickcalc.services.BeamDataService;
+import com.quickcalc.services.CanvasManager;
+import com.quickcalc.services.FileService;
+import com.quickcalc.services.MenuActionHandler;
 import com.quickcalc.views.components.BeamCanvas;
 
 /**
  * Controller for the main application window
  */
-public class MainController {
+public class MainController implements MenuActionHandler.ModelUpdateCallback {
 
     @FXML
     private Pane beamCanvasContainer;
@@ -38,78 +34,56 @@ public class MainController {
     @FXML
     private VBox resultsPanel;
     
-    // Reference to the primary stage
     private Stage primaryStage;
-    
-    /**
-     * Initialize the controller
-     * This method is automatically called after the FXML is loaded
-     */
-    // The beam model and canvas
     private BeamModel beamModel;
-    private BeamCanvas beamCanvas;
+    
+    private BeamDataService beamDataService;
+    private FileService fileService;
+    private MenuActionHandler menuActionHandler;
+    private CanvasManager canvasManager;
     
     @FXML
     private void initialize() {
-        // This will be called when the FXML is loaded
         System.out.println("MainController initialized");
         
-        // Initialize the beam model with total length of 50 feet (10' cantilever + 10' + 15' + 15' cantilever)
-        beamModel = new BeamModel(50.0);
-        
-        // Clear default supports and set up our three supports (pinned - roller - roller)
-        beamModel.getSupports().clear();
-        beamModel.addSupport(new Support(10.0, Support.Type.PINNED));  // Pinned at 10' (start of main span)
-        beamModel.addSupport(new Support(30.0, Support.Type.ROLLER));  // Roller at 30'
-        beamModel.addSupport(new Support(45.0, Support.Type.ROLLER)); // Roller at 45'
-        
-        // Add point load 5' from the left end (5' from 0' = position 5.0)
-        beamModel.addLoad(new Load(5.0, -8.0, Load.Type.POINT));   // 8 kips down at 5' (on cantilever)
-        
-        // Add two point loads on the main left span (10'-30')
-        beamModel.addLoad(new Load(18.0, -10.0, Load.Type.POINT));   // 10 kips down at 18'
-        beamModel.addLoad(new Load(25.0, -7.5, Load.Type.POINT));   // 7.5 kips down at 25'
-        
-        // Add distributed load on the right span (30'-45')
-        beamModel.addLoad(new Load(30.0, 45.0, -1.5));  // 1.5 kip/ft distributed load
-        
-        // Add moment at the end (50')
-        beamModel.addLoad(new Load(50.0, 25.0, Load.Type.MOMENT));  // 25 kip-ft moment at 50'
-        
-        // Create and add the beam canvas to the container
-        beamCanvas = new BeamCanvas(beamCanvasContainer.getWidth(), beamCanvasContainer.getHeight());
-        beamCanvas.setBeamModel(beamModel); // Set the beam model on the canvas
-        beamCanvasContainer.getChildren().add(beamCanvas);
-        
-        // Bind the canvas size to the container size
-        beamCanvas.widthProperty().bind(beamCanvasContainer.widthProperty());
-        beamCanvas.heightProperty().bind(beamCanvasContainer.heightProperty());
-        
-        // Set up key event handler at the container level
-        beamCanvasContainer.setOnKeyPressed(this::handleKeyPressed);
-        beamCanvasContainer.setFocusTraversable(true);
-        
-        // Request focus for the container to receive key events
-        Platform.runLater(() -> beamCanvasContainer.requestFocus());
+        initializeServices();
+        initializeBeamModel();
+        initializeCanvas();
+        setupMenuActionHandler();
     }
     
-    /**
-     * Handle key press events
-     */
-    private void handleKeyPressed(javafx.scene.input.KeyEvent event) {
-        if (event.getCode() == javafx.scene.input.KeyCode.F) {
-            // F key pressed, zoom to fit
-            beamCanvas.fitViewToBeam();
-            beamCanvas.draw();
-            event.consume();
+    private void initializeServices() {
+        beamDataService = new BeamDataService();
+        canvasManager = new CanvasManager();
+    }
+    
+    private void initializeBeamModel() {
+        beamModel = beamDataService.createSampleBeam();
+    }
+    
+    private void initializeCanvas() {
+        canvasManager.initializeCanvas(beamCanvasContainer, beamModel);
+    }
+    
+    private void setupMenuActionHandler() {
+        if (fileService != null) {
+            menuActionHandler = new MenuActionHandler(beamDataService, fileService);
+            menuActionHandler.setBeamModel(beamModel);
+            menuActionHandler.setBeamCanvas(canvasManager.getBeamCanvas());
+            menuActionHandler.setModelUpdateCallback(this);
         }
     }
     
-    /**
-     * Set the primary stage reference
-     */
+    @Override
+    public void onModelUpdated(BeamModel newModel) {
+        this.beamModel = newModel;
+        canvasManager.setBeamModel(newModel);
+    }
+    
     public void setPrimaryStage(Stage primaryStage) {
         this.primaryStage = primaryStage;
+        fileService = new FileService(primaryStage);
+        setupMenuActionHandler();
     }
     
     // /**
@@ -128,120 +102,83 @@ public class MainController {
         // }
     // }
     
-    // File menu handlers
+    // Menu handlers - delegate to MenuActionHandler
     
     @FXML
     private void handleNew() {
-        System.out.println("New project requested");
-        
-        // Reset the beam model with default values
-        beamModel.reset(20.0);
-        
-        // Add a sample point load for testing
-        beamModel.addLoad(new Load(10.0, 5.0, Load.Type.POINT));
-        
-        // Redraw the canvas
-        beamCanvas.draw();
+        if (menuActionHandler != null) {
+            menuActionHandler.handleNew();
+        }
     }
     
     @FXML
     private void handleOpen() {
-        System.out.println("Open project requested");
-        
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Open Beam Project");
-        fileChooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter("QuickCalc Projects", "*.json")
-        );
-        
-        File selectedFile = fileChooser.showOpenDialog(primaryStage);
-        if (selectedFile != null) {
-            System.out.println("Selected file: " + selectedFile.getAbsolutePath());
-            // TODO: Implement file loading
+        if (menuActionHandler != null) {
+            menuActionHandler.handleOpen();
         }
     }
     
     @FXML
     private void handleSave() {
-        System.out.println("Save project requested");
-        // TODO: Implement save functionality
+        if (menuActionHandler != null) {
+            menuActionHandler.handleSave();
+        }
     }
     
     @FXML
     private void handleSaveAs() {
-        System.out.println("Save As project requested");
-        
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Save Beam Project");
-        fileChooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter("QuickCalc Projects", "*.json")
-        );
-        
-        File selectedFile = fileChooser.showSaveDialog(primaryStage);
-        if (selectedFile != null) {
-            System.out.println("Save to file: " + selectedFile.getAbsolutePath());
-            // TODO: Implement file saving
+        if (menuActionHandler != null) {
+            menuActionHandler.handleSaveAs();
         }
     }
     
     @FXML
     private void handleExit() {
-        System.out.println("Exit requested");
-        Platform.exit();
+        if (menuActionHandler != null) {
+            menuActionHandler.handleExit();
+        }
     }
-    
-    // Edit menu handlers
     
     @FXML
     private void handleUndo() {
-        System.out.println("Undo requested");
-        // TODO: Implement undo functionality
+        if (menuActionHandler != null) {
+            menuActionHandler.handleUndo();
+        }
     }
     
     @FXML
     private void handleRedo() {
-        System.out.println("Redo requested");
-        // TODO: Implement redo functionality
+        if (menuActionHandler != null) {
+            menuActionHandler.handleRedo();
+        }
     }
     
     @FXML
     private void handlePreferences() {
-        System.out.println("Preferences requested");
-        // TODO: Implement preferences dialog
+        if (menuActionHandler != null) {
+            menuActionHandler.handlePreferences();
+        }
     }
-    
-    // Analysis menu handlers
     
     @FXML
     private void handleRunAnalysis() {
-        System.out.println("Run Analysis requested");
-        // TODO: Implement analysis functionality
-        
-        // For now, just show a placeholder alert
-        Alert alert = new Alert(AlertType.INFORMATION);
-        alert.setTitle("Analysis");
-        alert.setHeaderText("Analysis Results");
-        alert.setContentText("Analysis will be implemented in a future stage.");
-        alert.showAndWait();
+        if (menuActionHandler != null) {
+            menuActionHandler.handleRunAnalysis();
+        }
     }
     
     @FXML
     private void handleClearResults() {
-        System.out.println("Clear Results requested");
-        // TODO: Implement clear results functionality
+        if (menuActionHandler != null) {
+            menuActionHandler.handleClearResults();
+        }
     }
-    
-    // Help menu handlers
     
     @FXML
     private void handleAbout() {
-        System.out.println("About requested");
-        
-        Alert alert = new Alert(AlertType.INFORMATION);
-        alert.setTitle("About QuickCalc");
-        alert.setHeaderText("QuickCalc - Structural Beam Analysis");
-        alert.setContentText("Version 0.1.0\n\nA cross-platform desktop application for structural engineers to analyze and design single and multi-span beams.");
-        alert.showAndWait();
+        if (menuActionHandler != null) {
+            menuActionHandler.handleAbout();
+        }
     }
     
     // Toolbar handlers
@@ -249,12 +186,31 @@ public class MainController {
     @FXML
     private void handleAddSupport() {
         System.out.println("Add Support requested");
-        // TODO: Implement add support functionality
     }
     
     @FXML
     private void handleAddLoad() {
         System.out.println("Add Load requested");
-        // TODO: Implement add load functionality
+    }
+    
+    @FXML
+    private void handleZoomIn() {
+        if (menuActionHandler != null) {
+            menuActionHandler.handleZoomIn();
+        }
+    }
+    
+    @FXML
+    private void handleZoomOut() {
+        if (menuActionHandler != null) {
+            menuActionHandler.handleZoomOut();
+        }
+    }
+    
+    @FXML
+    private void handleFitToWindow() {
+        if (menuActionHandler != null) {
+            menuActionHandler.handleFitToWindow();
+        }
     }
 }
