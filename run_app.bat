@@ -27,7 +27,10 @@ if exist src\main\resources\fxml (
 
 REM ===== COMPILE =====
 echo Compiling Java files...
-javac --module-path %JAVAFX_MODULES% --add-modules javafx.controls,javafx.fxml -d bin src\main\java\module-info.java src\main\java\com\quickcalc\*.java src\main\java\com\quickcalc\controllers\*.java src\main\java\com\quickcalc\models\*.java src\main\java\com\quickcalc\services\*.java src\main\java\com\quickcalc\views\components\*.java src\main\java\com\quickcalc\utils\*.java src\main\java\com\quickcalc\constants\*.java src\test\java\com\quickcalc\*.java
+REM Create a temporary file list of all Java files
+dir /s /b src\main\java\*.java > temp_java_files.txt
+javac --module-path %JAVAFX_MODULES% --add-modules javafx.controls,javafx.fxml -d bin @temp_java_files.txt
+del temp_java_files.txt
 if %ERRORLEVEL% NEQ 0 (
     echo Compilation failed
     exit /b 1
