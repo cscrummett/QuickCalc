@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" 
+      fx:controller="com.quickcalc.views.panels.PropertiesPanelController"
+      prefWidth="300" style="-fx-background-color: #e0e0e0; -fx-padding: 10;">
+   
+   <!-- Beam Properties Section -->
+   <TitledPane text="Beam Properties" expanded="true">
+      <VBox spacing="5">
+         <HBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Length (ft):" prefWidth="80"/>
+            <TextField fx:id="beamLengthField" prefWidth="100"/>
+         </HBox>
+         <HBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Material:" prefWidth="80"/>
+            <TextField fx:id="materialPropertiesField" prefWidth="100"/>
+         </HBox>
+         <HBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Section:" prefWidth="80"/>
+            <TextField fx:id="crossSectionField" prefWidth="100"/>
+         </HBox>
+      </VBox>
+   </TitledPane>
+   
+   <!-- Support Configuration Section -->
+   <TitledPane text="Support Configuration" expanded="true">
+      <VBox spacing="5">
+         <HBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Type:" prefWidth="60"/>
+            <ComboBox fx:id="supportTypeComboBox" prefWidth="120"/>
+         </HBox>
+         <HBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Position:" prefWidth="60"/>
+            <TextField fx:id="supportPositionField" prefWidth="80"/>
+            <Label text="ft"/>
+         </HBox>
+         <HBox spacing="5">
+            <Button fx:id="addSupportButton" text="Add"/>
+            <Button fx:id="removeSupportButton" text="Remove"/>
+         </HBox>
+         <ListView fx:id="supportListView" prefHeight="80"/>
+      </VBox>
+   </TitledPane>
+   
+   <!-- Load Configuration Section -->
+   <TitledPane text="Load Configuration" expanded="true">
+      <VBox spacing="5">
+         <HBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Type:" prefWidth="60"/>
+            <ComboBox fx:id="loadTypeComboBox" prefWidth="120"/>
+         </HBox>
+         <HBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Magnitude:" prefWidth="60"/>
+            <TextField fx:id="loadMagnitudeField" prefWidth="80"/>
+            <Label text="kip"/>
+         </HBox>
+         <HBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Position:" prefWidth="60"/>
+            <TextField fx:id="loadPositionField" prefWidth="80"/>
+            <Label text="ft"/>
+         </HBox>
+         <HBox spacing="5" alignment="CENTER_LEFT">
+            <Label text="Distance:" prefWidth="60"/>
+            <TextField fx:id="loadDistanceField" prefWidth="80"/>
+            <Label text="ft"/>
+         </HBox>
+         <HBox spacing="5">
+            <Button fx:id="addLoadButton" text="Add"/>
+            <Button fx:id="removeLoadButton" text="Remove"/>
+         </HBox>
+         <ListView fx:id="loadListView" prefHeight="80"/>
+      </VBox>
+   </TitledPane>
+   
+   <!-- Analysis Settings Section -->
+   <TitledPane text="Analysis Settings" expanded="false">
+      <VBox spacing="5">
+         <CheckBox fx:id="includeDeflectionCheckBox" text="Include Deflection"/>
+         <CheckBox fx:id="includeMomentDiagramCheckBox" text="Include Moment Diagram"/>
+         <CheckBox fx:id="includeShearDiagramCheckBox" text="Include Shear Diagram"/>
+         <Button fx:id="runAnalysisButton" text="Run Analysis" prefWidth="120"/>
+      </VBox>
+   </TitledPane>
+   
+</VBox>
