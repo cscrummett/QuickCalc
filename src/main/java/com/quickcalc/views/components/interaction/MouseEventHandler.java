@@ -15,11 +15,19 @@ import java.util.List;
  */
 public class MouseEventHandler {
     
+    /**
+     * Interface for coordinate update callbacks
+     */
+    public interface CoordinateUpdateCallback {
+        void updateCoordinates(double worldX, double worldY);
+    }
+    
     private final Canvas canvas;
     private final ViewTransform viewTransform;
     private final SelectionManager selectionManager;
     private final Runnable redrawCallback;
     private final Runnable fitViewCallback;
+    private CoordinateUpdateCallback coordinateUpdateCallback;
     
     // Mouse interaction state
     private double lastMouseX;
@@ -41,7 +49,7 @@ public class MouseEventHandler {
     }
     
     /**
-     * Handle mouse movement for hover effects
+     * Handle mouse movement for hover effects and coordinate updates
      */
     public void handleMouseMoved(MouseEvent event, List<InteractiveElement> interactiveElements) {
         boolean hoverChanged = selectionManager.updateHover(event.getX(), event.getY(), 
@@ -49,6 +57,14 @@ public class MouseEventHandler {
         if (hoverChanged) {
             redrawCallback.run(); // Redraw to show/hide highlight
         }
+        
+        // Update coordinates display
+        if (coordinateUpdateCallback != null) {
+            // Convert screen coordinates to engineering coordinates
+            com.quickcalc.utils.Point2D engineeringPoint = viewTransform.screenToEngineering(event.getX(), event.getY());
+            coordinateUpdateCallback.updateCoordinates(engineeringPoint.getX(), engineeringPoint.getY());
+        }
+        
         event.consume();
     }
     
@@ -130,7 +146,6 @@ public class MouseEventHandler {
      * Handle mouse enter events
      */
     public void handleMouseEntered(MouseEvent event) {
-        System.out.println("Mouse entered canvas, requesting focus");
         canvas.requestFocus();
     }
     
@@ -139,5 +154,12 @@ public class MouseEventHandler {
      */
     public boolean isPanning() {
         return isPanning;
+    }
+    
+    /**
+     * Set the coordinate update callback
+     */
+    public void setCoordinateUpdateCallback(CoordinateUpdateCallback callback) {
+        this.coordinateUpdateCallback = callback;
     }
 }

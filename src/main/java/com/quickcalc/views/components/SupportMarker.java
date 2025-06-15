@@ -37,7 +37,6 @@ public class SupportMarker extends InteractiveElement {
     @Override
     public void drawHighlight(GraphicsContext gc, ViewTransform viewTransform) {
         if (isHovered() || isSelected()) {
-            System.out.println("SupportMarker@" + Integer.toHexString(System.identityHashCode(this)) + " drawing highlight. Support: " + support.getType() + "@" + support.getPosition() + " Hovered: " + isHovered() + ", Selected: " + isSelected());
             BoundingBox bounds = getScreenBounds(viewTransform);
             gc.setStroke(UIConstants.HIGHLIGHT_COLOR);
             gc.setLineWidth(UIConstants.HIGHLIGHT_LINE_WIDTH);

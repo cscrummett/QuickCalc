@@ -59,6 +59,9 @@ public class BeamCanvas extends Canvas {
     private KeyboardEventHandler keyboardEventHandler;
     private CommandManager commandManager;
     
+    // Coordinate update callback
+    private MouseEventHandler.CoordinateUpdateCallback coordinateUpdateCallback;
+    
     /**
      * Constructor
      * 
@@ -100,6 +103,11 @@ public class BeamCanvas extends Canvas {
         
         // Set up mouse and key event handlers
         setupMouseHandlers();
+        
+        // Set up coordinate update callback if available
+        if (coordinateUpdateCallback != null) {
+            mouseEventHandler.setCoordinateUpdateCallback(coordinateUpdateCallback);
+        }
         
         // Initial fit and draw
         populateInteractiveElements(); // Populate before first draw
@@ -282,8 +290,6 @@ public class BeamCanvas extends Canvas {
      * Set up mouse and keyboard event handlers for interaction
      */
     private void setupMouseHandlers() {
-        System.out.println("[BeamCanvas] setupMouseHandlers: Setting up mouse and keyboard event handlers...");
-        
         // Mouse movement for hover detection
         setOnMouseMoved(event -> mouseEventHandler.handleMouseMoved(event, interactiveElements));
 
@@ -303,7 +309,6 @@ public class BeamCanvas extends Canvas {
         // Mouse clicks for double-click zoom-to-fit
         setOnMouseClicked(event -> {
             if (event.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
-                System.out.println("Primary click on canvas, requesting focus");
                 requestFocus();
             }
             mouseEventHandler.handleMouseClicked(event);
@@ -349,6 +354,18 @@ public class BeamCanvas extends Canvas {
      * 
      * @param gc Graphics context
      */
+    
+    /**
+     * Set the coordinate update callback for mouse position reporting
+     * 
+     * @param callback The callback to receive coordinate updates
+     */
+    public void setCoordinateUpdateCallback(MouseEventHandler.CoordinateUpdateCallback callback) {
+        this.coordinateUpdateCallback = callback;
+        if (mouseEventHandler != null) {
+            mouseEventHandler.setCoordinateUpdateCallback(callback);
+        }
+    }
 
 }
 

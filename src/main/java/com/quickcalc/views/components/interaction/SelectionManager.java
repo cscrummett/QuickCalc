@@ -35,33 +35,18 @@ public class SelectionManager {
                               List<InteractiveElement> interactiveElements, 
                               ViewTransform viewTransform) {
         
-        System.out.println("MouseMoved: (" + mouseX + ", " + mouseY + ")");
         InteractiveElement currentlyUnderMouse = null;
         
         // Iterate in reverse to check top-most elements first
         for (int i = interactiveElements.size() - 1; i >= 0; i--) {
             InteractiveElement element = interactiveElements.get(i);
             if (element.getScreenBounds(viewTransform).contains(mouseX, mouseY)) {
-                System.out.println("  Element " + interactiveElements.indexOf(element) + 
-                                 " (" + element.getClass().getSimpleName() + ") CONTAINS mouse. Bounds: " + 
-                                 element.getScreenBounds(viewTransform));
                 currentlyUnderMouse = element;
                 break;
-            } else {
-                System.out.println("  Element " + interactiveElements.indexOf(element) + 
-                                 " (" + element.getClass().getSimpleName() + ") does NOT contain mouse. Bounds: " + 
-                                 element.getScreenBounds(viewTransform));
             }
         }
 
         if (hoveredElement != currentlyUnderMouse) {
-            System.out.println("Hover changed. Old: " + 
-                             (hoveredElement != null ? hoveredElement.getClass().getSimpleName() + "@" + 
-                              Integer.toHexString(System.identityHashCode(hoveredElement)) : "null") + 
-                             ", New: " + 
-                             (currentlyUnderMouse != null ? currentlyUnderMouse.getClass().getSimpleName() + "@" + 
-                              Integer.toHexString(System.identityHashCode(currentlyUnderMouse)) : "null"));
-            
             if (hoveredElement != null) {
                 hoveredElement.setHovered(false);
             }
@@ -69,10 +54,8 @@ public class SelectionManager {
             if (hoveredElement != null) {
                 hoveredElement.setHovered(true);
                 canvas.setCursor(Cursor.HAND);
-                System.out.println("Set cursor to HAND for " + hoveredElement.getClass().getSimpleName());
             } else {
                 canvas.setCursor(Cursor.DEFAULT);
-                System.out.println("Set cursor to DEFAULT");
             }
             return true; // Hover state changed
         }
@@ -85,33 +68,20 @@ public class SelectionManager {
      * @return true if selection state changed
      */
     public boolean selectHoveredElement() {
-        System.out.println("Primary button pressed. Hovered: " + 
-                         (hoveredElement != null ? hoveredElement.getClass().getSimpleName() + "@" + 
-                          Integer.toHexString(System.identityHashCode(hoveredElement)) : "null") + 
-                         ", Selected: " + 
-                         (selectedElement != null ? selectedElement.getClass().getSimpleName() + "@" + 
-                          Integer.toHexString(System.identityHashCode(selectedElement)) : "null"));
-        
         boolean selectionChanged = false;
         
         if (hoveredElement != null) {
             // An interactive element is clicked
             if (selectedElement != null && selectedElement != hoveredElement) {
                 selectedElement.setSelected(false); // Deselect previous
-                System.out.println("  Deselected old: " + selectedElement.getClass().getSimpleName() + "@" + 
-                                 Integer.toHexString(System.identityHashCode(selectedElement)));
             }
             selectedElement = hoveredElement;
             selectedElement.setSelected(true);
-            System.out.println("  Selected new: " + selectedElement.getClass().getSimpleName() + "@" + 
-                             Integer.toHexString(System.identityHashCode(selectedElement)));
             selectionChanged = true;
         } else {
             // Clicked on empty space
             if (selectedElement != null) {
                 selectedElement.setSelected(false);
-                System.out.println("  Deselected (clicked empty): " + selectedElement.getClass().getSimpleName() + "@" + 
-                                 Integer.toHexString(System.identityHashCode(selectedElement)));
                 selectedElement = null;
                 selectionChanged = true;
             }
@@ -128,12 +98,9 @@ public class SelectionManager {
     public boolean unselectCurrentElement() {
         if (selectedElement != null) {
             selectedElement.setSelected(false);
-            System.out.println("  Deselected (via ESC): " + selectedElement.getClass().getSimpleName() + 
-                             "@" + Integer.toHexString(System.identityHashCode(selectedElement)));
             selectedElement = null;
             return true;
         } else {
-            System.out.println("No element selected to unselect");
             return false;
         }
     }

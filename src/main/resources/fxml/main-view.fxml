@@ -12,6 +12,7 @@
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.Pane?>
+<?import javafx.scene.control.SplitPane?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" 
             fx:controller="com.quickcalc.controllers.MainController">
@@ -54,22 +55,26 @@
       </VBox>
    </top>
    <center>
-      <!-- This will be replaced with our BeamCanvas -->
-      <Pane fx:id="beamCanvasContainer" style="-fx-background-color: #f0f0f0;" focusTraversable="true" />
-   </center>
-   <right>
-      <!-- This will be our properties panel -->
-      <VBox fx:id="propertiesPanel" prefWidth="300" style="-fx-background-color: #e0e0e0; -fx-padding: 10;" />
-   </right>
-   <bottom>
-      <VBox>
-         <!-- This will be our results panel -->
-         <VBox fx:id="resultsPanel" prefHeight="200" style="-fx-background-color: #e8e8e8; -fx-padding: 10;" />
+      <!-- Main content area with resizable panels -->
+      <SplitPane orientation="VERTICAL" dividerPositions="0.75">
+         <!-- Top section: Main drawing area with resizable right panel -->
+         <SplitPane orientation="HORIZONTAL" dividerPositions="0.75">
+            <!-- Left: Main canvas area -->
+            <Pane fx:id="beamCanvasContainer" style="-fx-background-color: #f0f0f0;" focusTraversable="true" />
+            
+            <!-- Right: Properties panel -->
+            <VBox fx:id="propertiesPanel" prefWidth="300" minWidth="200" style="-fx-background-color: #e0e0e0; -fx-padding: 10;" />
+         </SplitPane>
          
-         <!-- Status bar with coordinates display -->
-         <HBox fx:id="statusBar" style="-fx-background-color: #d0d0d0; -fx-padding: 3 10 3 10;">
-            <Label fx:id="coordinatesLabel" text="Position: (0.00', 0.00')" />
-         </HBox>
-      </VBox>
+         <!-- Bottom section: Results panel only -->
+         <VBox fx:id="resultsPanel" prefHeight="200" minHeight="100" style="-fx-background-color: #e8e8e8; -fx-padding: 10;" />
+      </SplitPane>
+   </center>
+   
+   <bottom>
+      <!-- Status bar stays fixed at bottom -->
+      <HBox fx:id="statusBar" style="-fx-background-color: #d0d0d0; -fx-padding: 3 10 3 10;">
+         <Label fx:id="coordinatesLabel" text="Position: (0.00', 0.00')" />
+      </HBox>
    </bottom>
 </BorderPane>

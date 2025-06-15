@@ -20,10 +20,8 @@ public class SupportRenderer {
      * @param viewTransform View transformation
      */
     public void drawSupports(GraphicsContext gc, java.util.List<Support> supports, ViewTransform viewTransform) {
-        System.out.println("Drawing supports:");
         for (Support support : supports) {
             Point2D position = viewTransform.engineeringToScreen(support.getPosition(), 0);
-            System.out.println("  Support at " + support.getPosition() + " feet, type: " + support.getType());
             
             switch (support.getType()) {
                 case PINNED:

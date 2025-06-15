@@ -16,6 +16,7 @@ import com.quickcalc.services.BeamDataService;
 import com.quickcalc.services.CanvasManager;
 import com.quickcalc.services.FileService;
 import com.quickcalc.services.MenuActionHandler;
+import com.quickcalc.utils.DimensionFormatter;
 import com.quickcalc.views.components.BeamCanvas;
 import com.quickcalc.views.panels.PropertiesPanelController;
 import com.quickcalc.views.panels.ResultsPanelController;
@@ -86,6 +87,9 @@ public class MainController implements
     
     private void initializeCanvas() {
         canvasManager.initializeCanvas(beamCanvasContainer, beamModel);
+        
+        // Set up coordinate update callback
+        canvasManager.setCoordinateUpdateCallback(this::updateCoordinateDisplay);
     }
     
     private void initializePanelControllers() {
@@ -438,5 +442,20 @@ public class MainController implements
     @FXML
     private void handleAddLoad() {
         onToolSelected(ToolbarController.DrawingTool.ADD_LOAD);
+    }
+    
+    /**
+     * Update the coordinate display in the status bar
+     * This method is called by the mouse event handler when the mouse moves
+     * 
+     * @param worldX X-coordinate in engineering units (feet)
+     * @param worldY Y-coordinate in engineering units (feet)
+     */
+    private void updateCoordinateDisplay(double worldX, double worldY) {
+        // For now, just show mouse position. Later we can enhance this to show 
+        // selected element positions when an element is selected
+        if (coordinatesLabel != null) {
+            coordinatesLabel.setText(DimensionFormatter.formatCoordinates(worldX, worldY));
+        }
     }
 }

@@ -4,7 +4,10 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.geometry.Rectangle2D;
 
 import java.io.IOException;
 
@@ -30,16 +33,49 @@ public class Main extends Application {
             System.out.println("Controller obtained: " + (controller != null ? "success" : "failed"));
             controller.setPrimaryStage(primaryStage);
             
-            // Set up the primary stage
+            // Get screen dimensions to size window appropriately
+            Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
+            double screenWidth = screenBounds.getWidth();
+            double screenHeight = screenBounds.getHeight();
+            
+            // Calculate window size as 80% of screen size, with reasonable limits
+            double windowWidth = Math.min(Math.max(screenWidth * 0.8, 800), 1200);
+            double windowHeight = Math.min(Math.max(screenHeight * 0.8, 600), 800);
+            
+            // Set up the primary stage with proper window decorations
             primaryStage.setTitle("QuickCalc - Structural Beam Analysis");
-            primaryStage.setScene(new Scene(root, 1200, 800));
+            primaryStage.initStyle(StageStyle.DECORATED); // Ensure window decorations are shown
+            primaryStage.setResizable(true); // Allow window resizing
+            primaryStage.setMaximized(false); // Start windowed, not maximized
+            
+            // Set minimum window size
+            primaryStage.setMinWidth(800);
+            primaryStage.setMinHeight(600);
+            
+            // Center the window on screen
+            primaryStage.setX((screenWidth - windowWidth) / 2);
+            primaryStage.setY((screenHeight - windowHeight) / 2);
+            
+            primaryStage.setScene(new Scene(root, windowWidth, windowHeight));
             primaryStage.show();
             
         } catch (IOException e) {
             e.printStackTrace();
             // For now, if FXML fails to load, show a simple scene
+            Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
+            double screenWidth = screenBounds.getWidth();
+            double screenHeight = screenBounds.getHeight();
+            double windowWidth = Math.min(Math.max(screenWidth * 0.8, 800), 1200);
+            double windowHeight = Math.min(Math.max(screenHeight * 0.8, 600), 800);
+            
             Scene fallbackScene = createFallbackScene();
             primaryStage.setTitle("QuickCalc - Structural Beam Analysis");
+            primaryStage.initStyle(StageStyle.DECORATED); // Ensure window decorations are shown
+            primaryStage.setResizable(true); // Allow window resizing
+            primaryStage.setMinWidth(800);
+            primaryStage.setMinHeight(600);
+            primaryStage.setX((screenWidth - windowWidth) / 2);
+            primaryStage.setY((screenHeight - windowHeight) / 2);
             primaryStage.setScene(fallbackScene);
             primaryStage.show();
         }

@@ -71,4 +71,15 @@ public class CanvasManager {
             beamCanvas.draw();
         }
     }
+    
+    /**
+     * Set up coordinate update callback for mouse position reporting
+     * 
+     * @param callback The callback to receive coordinate updates
+     */
+    public void setCoordinateUpdateCallback(com.quickcalc.views.components.interaction.MouseEventHandler.CoordinateUpdateCallback callback) {
+        if (beamCanvas != null) {
+            beamCanvas.setCoordinateUpdateCallback(callback);
+        }
+    }
 }

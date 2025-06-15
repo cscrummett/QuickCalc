@@ -3,6 +3,7 @@ package com.quickcalc.views.components;
 import com.quickcalc.models.BeamModel;
 import com.quickcalc.models.Load;
 import com.quickcalc.models.Support;
+import com.quickcalc.utils.DimensionFormatter;
 import com.quickcalc.utils.Point2D;
 import com.quickcalc.utils.ViewTransform;
 import com.quickcalc.constants.UIConstants;
@@ -145,7 +146,7 @@ public class DimensionLineDrawer {
     }
 
     private void drawDimensionText(GraphicsContext gc, double segmentStartScreenX, double segmentEndScreenX, double dimLineScreenY, double segmentLengthEng, double textOffsetY, double bgPadding, Color textColor, Object modelElement, String dimensionType, double anchor1EngX, double anchor2EngX) {
-        String text = String.format("%.2f'", segmentLengthEng);
+        String text = DimensionFormatter.formatDimension(segmentLengthEng);
         javafx.scene.text.Text tempTextNode = new javafx.scene.text.Text(text);
         tempTextNode.setFont(gc.getFont());
         double textWidth = tempTextNode.getLayoutBounds().getWidth();
