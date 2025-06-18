@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" 
+      fx:controller="com.quickcalc.views.panels.PropertiesPanelController"
+      prefWidth="300" style="-fx-background-color: #e0e0e0; -fx-padding: 10;">
+   
+   <!-- Properties Panel Header -->
+   <Label text="Properties Panel" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 0 0 10 0;"/>
+   
+   <!-- Placeholder content - no input forms yet -->
+   <Label text="Beam and load properties will appear here when ready for input." 
+          style="-fx-text-fill: #666666; -fx-wrap-text: true;" 
+          wrapText="true"/>
+   
+</VBox>

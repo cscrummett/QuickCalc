@@ -1,0 +1,29 @@
+{
+  "length": 20.0,
+  "E": 29000.0,
+  "I": 100.0,
+  "supports": [
+    {
+      "position": 0.0,
+      "type": "pinned"
+    },
+    {
+      "position": 20.0,
+      "type": "roller"
+    }
+  ],
+  "point_loads": [
+    {
+      "position": 10.0,
+      "magnitude": 10.0
+    }
+  ],
+  "distributed_loads": [
+    {
+      "start_pos": 5.0,
+      "end_pos": 15.0,
+      "start_magnitude": 2.0,
+      "end_magnitude": 2.0
+    }
+  ]
+}
